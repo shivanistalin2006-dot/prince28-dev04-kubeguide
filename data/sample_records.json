@@ -1,0 +1,182 @@
+[
+  {
+    "id": "001",
+    "page": "pod-lifecycle",
+    "section": "Container restart policy & CrashLoopBackOff",
+    "k8s_version": "v1.31",
+    "object_kind": "Pod",
+    "api_version": "v1",
+    "topic": "CrashLoopBackOff troubleshooting and back-off delays"
+  },
+  {
+    "id": "002",
+    "page": "images",
+    "section": "ImagePullBackOff and ErrImagePull",
+    "k8s_version": "v1.31",
+    "object_kind": "Pod",
+    "api_version": "v1",
+    "topic": "Container image pull authentication and private registry secrets"
+  },
+  {
+    "id": "003",
+    "page": "deprecation-guide",
+    "section": "PodSecurityPolicy removal in v1.25",
+    "k8s_version": "v1.28",
+    "object_kind": "PodSecurityPolicy",
+    "api_version": "policy/v1beta1",
+    "topic": "Migration from PodSecurityPolicy to built-in Pod Security Standards"
+  },
+  {
+    "id": "004",
+    "page": "manage-resources-containers",
+    "section": "Resource requests and limits of Pod and Container",
+    "k8s_version": "v1.30",
+    "object_kind": "Pod",
+    "api_version": "v1",
+    "topic": "OOMKilled exit code 137 and memory cgroup limit enforcement"
+  },
+  {
+    "id": "005",
+    "page": "service",
+    "section": "Services without selectors and empty Endpoints",
+    "k8s_version": "v1.31",
+    "object_kind": "Service",
+    "api_version": "v1",
+    "topic": "Troubleshooting Service routing and EndpointSlice missing target pods"
+  },
+  {
+    "id": "006",
+    "page": "ingress",
+    "section": "Ingress API deprecation and migration",
+    "k8s_version": "v1.28",
+    "object_kind": "Ingress",
+    "api_version": "networking.k8s.io/v1",
+    "topic": "Migrating Ingress from networking.k8s.io/v1beta1 to networking.k8s.io/v1"
+  },
+  {
+    "id": "007",
+    "page": "horizontal-pod-autoscale",
+    "section": "Algorithm details and target metrics calculation",
+    "k8s_version": "v1.30",
+    "object_kind": "HorizontalPodAutoscaler",
+    "api_version": "autoscaling/v2",
+    "topic": "HPA scaling calculations based on average value and utilization targets"
+  },
+  {
+    "id": "008",
+    "page": "node-pressure-eviction",
+    "section": "Node conditions and DiskPressure eviction thresholds",
+    "k8s_version": "v1.31",
+    "object_kind": "Node",
+    "api_version": "v1",
+    "topic": "Resolving NodeNotReady status caused by image filesystem disk pressure"
+  },
+  {
+    "id": "009",
+    "page": "service-accounts",
+    "section": "TokenRequest API and projection volumes",
+    "k8s_version": "v1.29",
+    "object_kind": "ServiceAccount",
+    "api_version": "v1",
+    "topic": "Bound service account tokens and automatic secret token deprecation"
+  },
+  {
+    "id": "010",
+    "page": "configure-liveness-readiness-startup-probes",
+    "section": "Define startup and readiness probes",
+    "k8s_version": "v1.31",
+    "object_kind": "Pod",
+    "api_version": "v1",
+    "topic": "Preventing premature pod traffic before slow application initialization"
+  },
+  {
+    "id": "011",
+    "page": "deployment",
+    "section": "Deployment status and failure reasons",
+    "k8s_version": "v1.30",
+    "object_kind": "Deployment",
+    "api_version": "apps/v1",
+    "topic": "Troubleshooting ProgressDeadlineExceeded during rolling updates"
+  },
+  {
+    "id": "012",
+    "page": "configmap",
+    "section": "Mounted ConfigMaps are updated automatically",
+    "k8s_version": "v1.31",
+    "object_kind": "ConfigMap",
+    "api_version": "v1",
+    "topic": "ConfigMap volume update propagation delay and kubelet sync frequency"
+  },
+  {
+    "id": "013",
+    "page": "network-policies",
+    "section": "Default deny all ingress and egress traffic",
+    "k8s_version": "v1.30",
+    "object_kind": "NetworkPolicy",
+    "api_version": "networking.k8s.io/v1",
+    "topic": "Debugging pod-to-pod network connectivity drops caused by missing allow rules"
+  },
+  {
+    "id": "014",
+    "page": "persistent-volumes",
+    "section": "Volume binding and StorageClass provisioning",
+    "k8s_version": "v1.31",
+    "object_kind": "PersistentVolumeClaim",
+    "api_version": "v1",
+    "topic": "Resolving PersistentVolumeClaim stuck in Pending status"
+  },
+  {
+    "id": "015",
+    "page": "statefulset",
+    "section": "Ordered pod management and volume claim templates",
+    "k8s_version": "v1.29",
+    "object_kind": "StatefulSet",
+    "api_version": "apps/v1",
+    "topic": "Debugging partitioned updates and stuck ordinal rollout in stateful sets"
+  },
+  {
+    "id": "016",
+    "page": "taints-and-tolerations",
+    "section": "Taint node by condition and pod toleration seconds",
+    "k8s_version": "v1.31",
+    "object_kind": "Node",
+    "api_version": "v1",
+    "topic": "Pod scheduling failures caused by unmatched node taints and tolerations"
+  },
+  {
+    "id": "017",
+    "page": "daemonset",
+    "section": "Running pods on selected nodes",
+    "k8s_version": "v1.30",
+    "object_kind": "DaemonSet",
+    "api_version": "apps/v1",
+    "topic": "DaemonSet pod scheduling, node affinity, and resource quota blockage"
+  },
+  {
+    "id": "018",
+    "page": "cronjob",
+    "section": "Concurrency policy and starting deadline seconds",
+    "k8s_version": "v1.31",
+    "object_kind": "CronJob",
+    "api_version": "batch/v1",
+    "topic": "Resolving missed cron execution schedules with startingDeadlineSeconds"
+  },
+  {
+    "id": "019",
+    "page": "pod-disruption-budget",
+    "section": "Eviction API and voluntary disruptions",
+    "k8s_version": "v1.30",
+    "object_kind": "PodDisruptionBudget",
+    "api_version": "policy/v1",
+    "topic": "Node drain blocked by overly restrictive PodDisruptionBudget minAvailable"
+  },
+  {
+    "id": "020",
+    "page": "custom-resource-definitions",
+    "section": "Structural schemas and conversion webhooks",
+    "k8s_version": "v1.31",
+    "object_kind": "CustomResourceDefinition",
+    "api_version": "apiextensions.k8s.io/v1",
+    "topic": "Troubleshooting admission conversion webhook failures on CRD version upgrades"
+  }
+]

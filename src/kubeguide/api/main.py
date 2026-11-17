@@ -2,7 +2,9 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
+
 from kubeguide.api.errors import register_error_handlers
 from kubeguide.api.middleware import register_middleware
 from kubeguide.api.routes import documents, health

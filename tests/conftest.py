@@ -1,6 +1,8 @@
 import json
+
 import pytest
 from fastapi.testclient import TestClient
+
 from kubeguide.api.main import create_app
 from kubeguide.config import Settings
 

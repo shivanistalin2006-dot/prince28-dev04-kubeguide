@@ -1,6 +1,7 @@
 """RFC 9457 Problem Details error models and exception handlers."""
 
 from typing import Any
+
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse

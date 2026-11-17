@@ -1,6 +1,7 @@
 """FastAPI dependency injection providers."""
 
 from fastapi import Request
+
 from kubeguide.config import Settings, get_settings
 from kubeguide.store import DocumentStore
 

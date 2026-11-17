@@ -1,8 +1,10 @@
 """Health and readiness probe endpoints."""
 
-from typing import Any
+from typing import Annotated, Any
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
+
 from kubeguide.api.deps import get_app_settings, get_document_store
 from kubeguide.config import Settings
 from kubeguide.store import DocumentStore
@@ -12,7 +14,7 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 def get_health(
-    settings: Settings = Depends(get_app_settings),
+    settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> dict[str, Any]:
     """Liveness probe: verifies service process is running."""
     return {
@@ -24,7 +26,7 @@ def get_health(
 
 @router.get("/ready")
 def get_ready(
-    store: DocumentStore = Depends(get_document_store),
+    store: Annotated[DocumentStore, Depends(get_document_store)],
 ) -> Any:
     """Readiness probe: verifies document store is loaded."""
     if not store.is_loaded:

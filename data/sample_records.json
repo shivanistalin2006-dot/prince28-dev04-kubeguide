@@ -6,7 +6,8 @@
     "k8s_version": "v1.31",
     "object_kind": "Pod",
     "api_version": "v1",
-    "topic": "CrashLoopBackOff troubleshooting and back-off delays"
+    "topic": "CrashLoopBackOff troubleshooting and back-off delays",
+    "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/"
   },
   {
     "id": "002",
@@ -15,7 +16,8 @@
     "k8s_version": "v1.31",
     "object_kind": "Pod",
     "api_version": "v1",
-    "topic": "Container image pull authentication and private registry secrets"
+    "topic": "Container image pull authentication and private registry secrets",
+    "source_url": "https://kubernetes.io/docs/concepts/containers/images/"
   },
   {
     "id": "003",
@@ -24,7 +26,8 @@
     "k8s_version": "v1.28",
     "object_kind": "PodSecurityPolicy",
     "api_version": "policy/v1beta1",
-    "topic": "Migration from PodSecurityPolicy to built-in Pod Security Standards"
+    "topic": "Migration from PodSecurityPolicy to built-in Pod Security Standards",
+    "source_url": "https://kubernetes.io/docs/reference/using-api/deprecation-guide/"
   },
   {
     "id": "004",
@@ -33,7 +36,8 @@
     "k8s_version": "v1.30",
     "object_kind": "Pod",
     "api_version": "v1",
-    "topic": "OOMKilled exit code 137 and memory cgroup limit enforcement"
+    "topic": "OOMKilled exit code 137 and memory cgroup limit enforcement",
+    "source_url": "https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/"
   },
   {
     "id": "005",
@@ -42,7 +46,8 @@
     "k8s_version": "v1.31",
     "object_kind": "Service",
     "api_version": "v1",
-    "topic": "Troubleshooting Service routing and EndpointSlice missing target pods"
+    "topic": "Troubleshooting Service routing and EndpointSlice missing target pods",
+    "source_url": "https://kubernetes.io/docs/concepts/services-networking/service/"
   },
   {
     "id": "006",
@@ -51,7 +56,8 @@
     "k8s_version": "v1.28",
     "object_kind": "Ingress",
     "api_version": "networking.k8s.io/v1",
-    "topic": "Migrating Ingress from networking.k8s.io/v1beta1 to networking.k8s.io/v1"
+    "topic": "Migrating Ingress from networking.k8s.io/v1beta1 to networking.k8s.io/v1",
+    "source_url": "https://kubernetes.io/docs/concepts/services-networking/ingress/"
   },
   {
     "id": "007",
@@ -60,7 +66,8 @@
     "k8s_version": "v1.30",
     "object_kind": "HorizontalPodAutoscaler",
     "api_version": "autoscaling/v2",
-    "topic": "HPA scaling calculations based on average value and utilization targets"
+    "topic": "HPA scaling calculations based on average value and utilization targets",
+    "source_url": "https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/"
   },
   {
     "id": "008",
@@ -69,7 +76,8 @@
     "k8s_version": "v1.31",
     "object_kind": "Node",
     "api_version": "v1",
-    "topic": "Resolving NodeNotReady status caused by image filesystem disk pressure"
+    "topic": "Resolving NodeNotReady status caused by image filesystem disk pressure",
+    "source_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/node-pressure-eviction/"
   },
   {
     "id": "009",
@@ -78,7 +86,8 @@
     "k8s_version": "v1.29",
     "object_kind": "ServiceAccount",
     "api_version": "v1",
-    "topic": "Bound service account tokens and automatic secret token deprecation"
+    "topic": "Bound service account tokens and automatic secret token deprecation",
+    "source_url": "https://kubernetes.io/docs/concepts/security/service-accounts/"
   },
   {
     "id": "010",
@@ -87,7 +96,8 @@
     "k8s_version": "v1.31",
     "object_kind": "Pod",
     "api_version": "v1",
-    "topic": "Preventing premature pod traffic before slow application initialization"
+    "topic": "Preventing premature pod traffic before slow application initialization",
+    "source_url": "https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/"
   },
   {
     "id": "011",
@@ -96,7 +106,8 @@
     "k8s_version": "v1.30",
     "object_kind": "Deployment",
     "api_version": "apps/v1",
-    "topic": "Troubleshooting ProgressDeadlineExceeded during rolling updates"
+    "topic": "Troubleshooting ProgressDeadlineExceeded during rolling updates",
+    "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/deployment/"
   },
   {
     "id": "012",
@@ -105,7 +116,8 @@
     "k8s_version": "v1.31",
     "object_kind": "ConfigMap",
     "api_version": "v1",
-    "topic": "ConfigMap volume update propagation delay and kubelet sync frequency"
+    "topic": "ConfigMap volume update propagation delay and kubelet sync frequency",
+    "source_url": "https://kubernetes.io/docs/concepts/configuration/configmap/"
   },
   {
     "id": "013",
@@ -114,7 +126,8 @@
     "k8s_version": "v1.30",
     "object_kind": "NetworkPolicy",
     "api_version": "networking.k8s.io/v1",
-    "topic": "Debugging pod-to-pod network connectivity drops caused by missing allow rules"
+    "topic": "Debugging pod-to-pod network connectivity drops caused by missing allow rules",
+    "source_url": "https://kubernetes.io/docs/concepts/services-networking/network-policies/"
   },
   {
     "id": "014",
@@ -123,7 +136,8 @@
     "k8s_version": "v1.31",
     "object_kind": "PersistentVolumeClaim",
     "api_version": "v1",
-    "topic": "Resolving PersistentVolumeClaim stuck in Pending status"
+    "topic": "Resolving PersistentVolumeClaim stuck in Pending status",
+    "source_url": "https://kubernetes.io/docs/concepts/storage/persistent-volumes/"
   },
   {
     "id": "015",
@@ -132,7 +146,8 @@
     "k8s_version": "v1.29",
     "object_kind": "StatefulSet",
     "api_version": "apps/v1",
-    "topic": "Debugging partitioned updates and stuck ordinal rollout in stateful sets"
+    "topic": "Debugging partitioned updates and stuck ordinal rollout in stateful sets",
+    "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/"
   },
   {
     "id": "016",
@@ -141,7 +156,8 @@
     "k8s_version": "v1.31",
     "object_kind": "Node",
     "api_version": "v1",
-    "topic": "Pod scheduling failures caused by unmatched node taints and tolerations"
+    "topic": "Pod scheduling failures caused by unmatched node taints and tolerations",
+    "source_url": "https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/"
   },
   {
     "id": "017",
@@ -150,7 +166,8 @@
     "k8s_version": "v1.30",
     "object_kind": "DaemonSet",
     "api_version": "apps/v1",
-    "topic": "DaemonSet pod scheduling, node affinity, and resource quota blockage"
+    "topic": "DaemonSet pod scheduling, node affinity, and resource quota blockage",
+    "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/"
   },
   {
     "id": "018",
@@ -159,7 +176,8 @@
     "k8s_version": "v1.31",
     "object_kind": "CronJob",
     "api_version": "batch/v1",
-    "topic": "Resolving missed cron execution schedules with startingDeadlineSeconds"
+    "topic": "Resolving missed cron execution schedules with startingDeadlineSeconds",
+    "source_url": "https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/"
   },
   {
     "id": "019",
@@ -168,7 +186,8 @@
     "k8s_version": "v1.30",
     "object_kind": "PodDisruptionBudget",
     "api_version": "policy/v1",
-    "topic": "Node drain blocked by overly restrictive PodDisruptionBudget minAvailable"
+    "topic": "Node drain blocked by overly restrictive PodDisruptionBudget minAvailable",
+    "source_url": "https://kubernetes.io/docs/concepts/workloads/pods/disruptions/"
   },
   {
     "id": "020",
@@ -177,6 +196,7 @@
     "k8s_version": "v1.31",
     "object_kind": "CustomResourceDefinition",
     "api_version": "apiextensions.k8s.io/v1",
-    "topic": "Troubleshooting admission conversion webhook failures on CRD version upgrades"
+    "topic": "Troubleshooting admission conversion webhook failures on CRD version upgrades",
+    "source_url": "https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definitions/"
   }
 ]

@@ -7,9 +7,9 @@ Run: uv run python scripts/load_db.py
 """
 
 import asyncio
-from datetime import date
 import hashlib
 import json
+from datetime import date
 
 from sqlalchemy import select, update
 

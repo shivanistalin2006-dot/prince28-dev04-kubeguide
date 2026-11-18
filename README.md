@@ -2,7 +2,7 @@
 
 A Kubernetes assistant for on-call engineers that explains errors, objects and kubectl output from the official docs for the cluster's version.
 
-**Status:** Day 1 foundation (FastAPI skeleton, quality gates). Live URL from Day 5.
+**Status:** Day 3 complete (PostgreSQL on Neon with Alembic migrations, idempotent loader, and metadata GIN index). Live URL from Day 5.
 
 ## Who it's for
 Site reliability engineer at a Chennai logistics startup who is on call for three Kubernetes clusters.
@@ -29,6 +29,8 @@ Right root cause in the top 2 for 80%+ of 30 broken-cluster scenarios.
 ```bash
 uv sync
 cp .env.example .env  # Windows: copy .env.example .env
+uv run alembic upgrade head
+uv run python scripts/load_db.py
 uv run uvicorn kubeguide.api.main:create_app --factory --reload
 ```
 Then open http://localhost:8000/docs

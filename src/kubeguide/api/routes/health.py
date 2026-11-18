@@ -5,9 +5,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
-from kubeguide.api.deps import get_app_settings, get_document_store
+from kubeguide.api.deps import check_db, get_app_settings
 from kubeguide.config import Settings
-from kubeguide.store import DocumentStore
 
 router = APIRouter(tags=["health"])
 
@@ -25,24 +24,24 @@ def get_health(
 
 
 @router.get("/ready")
-def get_ready(
-    store: Annotated[DocumentStore, Depends(get_document_store)],
+async def get_ready(
+    db_ok: Annotated[bool, Depends(check_db)],
 ) -> Any:
-    """Readiness probe: verifies document store is loaded."""
-    if not store.is_loaded:
+    """Readiness probe: verifies database connectivity."""
+    if not db_ok:
         return JSONResponse(
             status_code=503,
             content={
                 "status": "unavailable",
                 "checks": {
-                    "records_loaded": False,
+                    "database": False,
                 },
             },
         )
 
     return {
-        "status": "ok",
+        "status": "ready",
         "checks": {
-            "records_loaded": True,
+            "database": True,
         },
     }

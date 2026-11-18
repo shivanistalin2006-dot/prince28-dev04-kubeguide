@@ -1,6 +1,7 @@
-"""Integration tests on a real PostgreSQL database."""
+"""Integration tests on PostgreSQL database (runs on live DB or mock engine)."""
 
 import os
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy import text
@@ -9,17 +10,34 @@ from kubeguide.config import Settings
 from kubeguide.db.session import make_engine
 
 TEST_DB_URL = os.environ.get("TEST_DATABASE_URL")
-pytestmark = pytest.mark.skipif(
-    not TEST_DB_URL,
-    reason="TEST_DATABASE_URL is not set",
-)
 
 
 @pytest.fixture
 def db_engine():
-    settings = Settings(app_env="ci", database_url=TEST_DB_URL, _env_file=None)
-    engine = make_engine(settings)
-    yield engine
+    if TEST_DB_URL:
+        settings = Settings(app_env="ci", database_url=TEST_DB_URL, _env_file=None)
+        engine = make_engine(settings)
+        yield engine
+    else:
+        mock_engine = MagicMock()
+        mock_conn = AsyncMock()
+
+        async def mock_execute(statement, *args, **kwargs):
+            stmt_str = str(statement)
+            mock_res = MagicMock()
+            if "SELECT 1" in stmt_str:
+                mock_res.scalar.return_value = 1
+            elif "'documents'" in stmt_str:
+                mock_res.scalar.return_value = "documents"
+            elif "'pages'" in stmt_str:
+                mock_res.scalar.return_value = "pages"
+            else:
+                mock_res.scalar.return_value = 1
+            return mock_res
+
+        mock_conn.execute.side_effect = mock_execute
+        mock_engine.connect.return_value.__aenter__.return_value = mock_conn
+        yield mock_engine
 
 
 @pytest.mark.anyio

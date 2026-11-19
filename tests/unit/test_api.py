@@ -121,5 +121,6 @@ def test_offset_pagination(client):
 def test_empty_search_returns_zero_items(client):
     r = client.get("/v1/documents", params={"q": "nonexistent_query_string"})
     assert r.status_code == 200
+    body = r.json()
     assert body["total"] == 0
     assert len(body["items"]) == 0

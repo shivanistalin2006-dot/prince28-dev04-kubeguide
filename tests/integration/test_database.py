@@ -1,6 +1,8 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import text
 
+from kubeguide.api.main import create_app
 from kubeguide.config import Settings
 from kubeguide.db.models import Document
 from kubeguide.db.repository import DocumentRepository
@@ -65,4 +67,12 @@ async def test_repository_filters(seeded, filters, expected):
     await engine.dispose()
     assert [i["id"] for i in items] == expected
     assert total == len(expected)
+
+
+def test_api_against_real_database(seeded):
+    with TestClient(create_app(seeded)) as client:
+        assert client.get("/ready").json()["checks"]["database"] is True
+        assert client.get("/v1/documents/002").json()["title"] == "Beta"
+        assert client.get("/v1/documents", params={"q": "gamm"}).json()["total"] == 1
+
 

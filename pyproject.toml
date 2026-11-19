@@ -46,3 +46,13 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 # Harmless notice from newer Starlette versions; hide it so real warnings stand out.
 filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
+
+[tool.coverage.run]
+source = ["kubeguide"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 60
+

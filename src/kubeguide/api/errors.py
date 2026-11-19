@@ -72,9 +72,7 @@ def register_error_handlers(app: FastAPI) -> None:
     """Register RFC 9457 exception handlers on the FastAPI application."""
 
     @app.exception_handler(NotFoundProblem)
-    async def not_found_problem_handler(
-        request: Request, exc: NotFoundProblem
-    ) -> JSONResponse:
+    async def not_found_problem_handler(request: Request, exc: NotFoundProblem) -> JSONResponse:
         request_id = getattr(request.state, "request_id", request.headers.get("X-Request-ID"))
         return problem_response(
             status_code=404,
@@ -85,9 +83,7 @@ def register_error_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(HTTPException)
-    async def http_exception_handler(
-        request: Request, exc: HTTPException
-    ) -> JSONResponse:
+    async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
         request_id = getattr(request.state, "request_id", request.headers.get("X-Request-ID"))
         title = getattr(exc, "title", None)
         if not title:

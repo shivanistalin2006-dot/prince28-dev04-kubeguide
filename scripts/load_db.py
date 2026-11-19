@@ -59,9 +59,7 @@ async def main() -> None:
                 inserted += 1
             elif old != row["sha256"]:
                 await session.execute(
-                    update(Document)
-                    .where(Document.external_id == row["external_id"])
-                    .values(**row)
+                    update(Document).where(Document.external_id == row["external_id"]).values(**row)
                 )
                 updated += 1
             else:

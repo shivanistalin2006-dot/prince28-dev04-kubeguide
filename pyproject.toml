@@ -66,4 +66,3 @@ cov = "pytest tests/unit --cov=kubeguide --cov-report=term-missing"
 migrate = "alembic upgrade head"
 seed = "python scripts/load_db.py"
 test-integration = "pytest tests/integration"
-

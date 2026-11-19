@@ -92,6 +92,3 @@ def test_loader_is_idempotent(database_url, tmp_path):
 
     assert "inserted=2" in run()
     assert "inserted=0 updated=0 unchanged=2" in run()
-
-
-

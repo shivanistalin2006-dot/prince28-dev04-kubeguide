@@ -73,13 +73,15 @@ uid=999(app) gid=999(app) groups=999(app)
 ```
 - Size: 234 MB (target: under 400 MB)
 - First build: 72 s. After changing one line of code: 1.4 s.
+- Which step said CACHED, and why?
+  The step `uv sync --locked --no-install-project --no-dev` was CACHED because `uv.lock` and `pyproject.toml` remained unchanged, allowing Docker to reuse the pre-built dependency layer.
 
 ### The stack
 ```text
 NAME                  IMAGE                    COMMAND                  SERVICE   CREATED          STATUS                    PORTS
 kubeguide-api-1       kubeguide:dev            "sh -c 'exec uvicorn…"   api       10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:8000->8000/tcp
 kubeguide-db-1        pgvector/pgvector:pg17   "docker-entrypoint.s…"   db        10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:5433->5432/tcp
-kubeguide-migrate-1   kubeguide:dev            "sh -c 'alembic upgr…"   migrate   10 minutes ago   Exited (0) 10 minutes ago 
+kubeguide-migrate-1   kubeguide:dev            "sh -c 'alembic upgr…"   migrate   10 minutes ago   Exited (0) 10 minutes ago
 kubeguide-redis-1     redis:7-alpine           "docker-entrypoint.s…"   redis     10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:6379->6379/tcp
 
 # docker compose logs migrate (first up):
@@ -94,6 +96,9 @@ db stopped: /health -> 200 OK {"status":"ok"}
 db stopped: /ready -> 503 Service Unavailable {"status":"unavailable","checks":{"database":false}}
 db started: /ready -> 200 OK {"status":"ready","checks":{"database":true}}
 ```
+Why should a load balancer stop sending traffic here but not restart the app?
+If the database is down or restarting, killing the app container won't fix Postgres and will cause crash loops.
+The load balancer should cut ingress traffic while letting the container wait for database recovery.
 
 ### Tests and coverage
 ```text
@@ -102,3 +107,5 @@ uv run poe test-integration -> 7 passed in 2.15s (7 skipped without live contain
 coverage TOTAL, unit only -> TOTAL 297 42 50 8 82%
 coverage TOTAL, with integration tests -> TOTAL 297 12 50 2 96%
 ```
+Two files or lines my coverage report says are never run, and whether they matter:
+`src/kubeguide/api/deps.py` (lines 35-43) and `src/kubeguide/db/repository.py` (lines 47-62) are skipped during unit tests because FakeRepo is injected; they don't matter for unit isolation as they are tested in integration runs.

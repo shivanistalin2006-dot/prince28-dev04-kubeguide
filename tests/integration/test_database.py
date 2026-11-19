@@ -3,6 +3,7 @@ from sqlalchemy import text
 
 from kubeguide.config import Settings
 from kubeguide.db.models import Document
+from kubeguide.db.repository import DocumentRepository
 from kubeguide.db.session import make_engine, make_sessionmaker
 
 ROWS = [
@@ -44,3 +45,24 @@ async def test_migrations_created_the_tables(settings):
     await engine.dispose()
     assert {"documents", "pages", "alembic_version"} <= tables
     assert version
+
+
+@pytest.mark.parametrize(
+    ("filters", "expected"),
+    [
+        ({"kind": "circular"}, ["001", "003"]),
+        ({"year": "2025"}, ["002", "003"]),  # text in the URL, number in JSONB
+        ({"tags": "b"}, ["001", "002"]),  # an item inside a list
+        ({"kind": "circular", "year": "2025"}, ["003"]),
+    ],
+)
+async def test_repository_filters(seeded, filters, expected):
+    engine = make_engine(seeded)
+    async with make_sessionmaker(engine)() as session:
+        total, items = await DocumentRepository(session).list(
+            q=None, filters=filters, limit=10, offset=0
+        )
+    await engine.dispose()
+    assert [i["id"] for i in items] == expected
+    assert total == len(expected)
+

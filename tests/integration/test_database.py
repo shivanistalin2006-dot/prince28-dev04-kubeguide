@@ -1,3 +1,8 @@
+import json
+import os
+import subprocess
+import sys
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
@@ -74,5 +79,19 @@ def test_api_against_real_database(seeded):
         assert client.get("/ready").json()["checks"]["database"] is True
         assert client.get("/v1/documents/002").json()["title"] == "Beta"
         assert client.get("/v1/documents", params={"q": "gamm"}).json()["total"] == 1
+
+
+def test_loader_is_idempotent(database_url, tmp_path):
+    data = tmp_path / "records.json"
+    data.write_text(json.dumps([{"id": "L1", "x": 1}, {"id": "L2", "x": 2}]), encoding="utf-8")
+    env = {**os.environ, "APP_ENV": "ci", "DATABASE_URL": database_url, "DATA_FILE": str(data)}
+
+    def run() -> str:
+        cmd = [sys.executable, "scripts/load_db.py"]
+        return subprocess.run(cmd, env=env, check=True, capture_output=True, text=True).stdout
+
+    assert "inserted=2" in run()
+    assert "inserted=0 updated=0 unchanged=2" in run()
+
 
 

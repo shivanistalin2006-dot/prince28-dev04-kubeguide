@@ -38,6 +38,26 @@ services:
       DATABASE_URL: postgresql+psycopg://app:app_local@db:5432/app  # pragma: allowlist secret
     command: ["sh", "-c", "alembic upgrade head && python scripts/load_db.py"]
 
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app_local@db:5432/app  # pragma: allowlist secret
+      REDIS_URL: redis://redis:6379/0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 volumes:
   pgdata:
   redisdata:

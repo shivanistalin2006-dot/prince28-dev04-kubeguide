@@ -57,12 +57,17 @@ skip_covered = true
 fail_under = 60
 
 [tool.poe.tasks]
-dev = "uvicorn kubeguide.api.main:create_app --factory --reload --port 8000"
+dev = "uvicorn kubeguide.api.main:create_app --factory --reload --no-access-log"
+lint = ["_ruff_check", "_ruff_format"]
 _ruff_check = "ruff check src tests scripts"
 _ruff_format = "ruff format --check src tests scripts"
-lint = ["_ruff_check", "_ruff_format"]
 test = "pytest tests/unit"
 cov = "pytest tests/unit --cov=kubeguide --cov-report=term-missing"
 migrate = "alembic upgrade head"
 seed = "python scripts/load_db.py"
-test-integration = "pytest tests/integration"
+
+[tool.poe.tasks.test-integration]
+help = "Integration tests against the Postgres from docker compose (run `make up` first)"
+cmd = "pytest tests/integration"
+# Local compose database only; override by exporting TEST_DATABASE_URL yourself.
+env.TEST_DATABASE_URL.default = "postgresql://app:app@localhost:5433/app_test"  # pragma: allowlist secret

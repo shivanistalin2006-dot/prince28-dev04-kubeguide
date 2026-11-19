@@ -1,45 +1,48 @@
+# One command for the whole stack: docker compose up --build
+# Local development only: these passwords never leave your laptop.
+name: kubeguide
+
 services:
   db:
     image: pgvector/pgvector:pg17
     environment:
       POSTGRES_USER: app
-      POSTGRES_PASSWORD: app_local  # pragma: allowlist secret
+      POSTGRES_PASSWORD: app  # pragma: allowlist secret
       POSTGRES_DB: app
     ports:
-      - "5433:5432"
+      - "5433:5432"  # 5433 on your laptop, so it never clashes with another Postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U app -d app"]
-      interval: 2s
+      interval: 5s
       timeout: 3s
-      retries: 15
+      retries: 10
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine  # used from Week 2 for job queues and caching
     ports:
       - "6379:6379"
-    volumes:
-      - redisdata:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 2s
+      interval: 5s
       timeout: 3s
-      retries: 15
+      retries: 10
 
-  migrate:
+  migrate:  # runs once: migrations + seed data, then exits
     build: .
-    restart: "no"
+    command: ["sh", "-c", "alembic upgrade head && python scripts/load_db.py"]
+    environment: &app-env
+      APP_ENV: local
+      DATABASE_URL: postgresql://app:app@db:5432/app  # pragma: allowlist secret
     depends_on:
       db:
         condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql+psycopg://app:app_local@db:5432/app  # pragma: allowlist secret
-    command: ["sh", "-c", "alembic upgrade head && python scripts/load_db.py"]
 
   api:
     build: .
+    environment: *app-env
     ports:
       - "8000:8000"
     depends_on:
@@ -49,15 +52,11 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-    environment:
-      DATABASE_URL: postgresql+psycopg://app:app_local@db:5432/app  # pragma: allowlist secret
-      REDIS_URL: redis://redis:6379/0
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
-      interval: 5s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
       timeout: 3s
       retries: 5
 
 volumes:
   pgdata:
-  redisdata:

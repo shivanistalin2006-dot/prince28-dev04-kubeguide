@@ -61,3 +61,51 @@ With only 20 records, all database pages fit in a single memory block, making a 
 
 When would it switch to the GIN index?
 It switches to the GIN index when table cardinality scales to thousands of records and high filter selectivity makes index traversal cheaper than full table scans.
+
+## D04 · Docker, Compose and tests
+
+### The image
+```text
+REPOSITORY   TAG       IMAGE ID       CREATED          SIZE
+kubeguide    dev       8d2039cae7b1   12 minutes ago   234MB
+
+uid=999(app) gid=999(app) groups=999(app)
+```
+- Size: 234 MB (target: under 400 MB)
+- First build: 72 s. After changing one line of code: 1.4 s.
+- Which step said CACHED, and why?
+  The step `uv sync --locked --no-install-project --no-dev` was CACHED because `uv.lock` and `pyproject.toml` remained unchanged, allowing Docker to reuse the pre-built dependency layer.
+
+### The stack
+```text
+NAME                  IMAGE                    COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+kubeguide-api-1       kubeguide:dev            "sh -c 'exec uvicorn…"   api       10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:8000->8000/tcp
+kubeguide-db-1        pgvector/pgvector:pg17   "docker-entrypoint.s…"   db        10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:5433->5432/tcp
+kubeguide-migrate-1   kubeguide:dev            "sh -c 'alembic upgr…"   migrate   10 minutes ago   Exited (0) 10 minutes ago
+kubeguide-redis-1     redis:7-alpine           "docker-entrypoint.s…"   redis     10 minutes ago   Up 10 minutes (healthy)   0.0.0.0:6379->6379/tcp
+
+# docker compose logs migrate (first up):
+kubeguide-migrate-1  | records=20 inserted=20 updated=0 unchanged=0
+# docker compose logs migrate (after down + up):
+kubeguide-migrate-1  | records=20 inserted=0 updated=0 unchanged=20
+```
+
+### Breaking the database on purpose
+```text
+db stopped: /health -> 200 OK {"status":"ok"}
+db stopped: /ready -> 503 Service Unavailable {"status":"unavailable","checks":{"database":false}}
+db started: /ready -> 200 OK {"status":"ready","checks":{"database":true}}
+```
+Why should a load balancer stop sending traffic here but not restart the app?
+If the database is down or restarting, killing the app container won't fix Postgres and will cause crash loops.
+The load balancer should cut ingress traffic while letting the container wait for database recovery.
+
+### Tests and coverage
+```text
+uv run poe test -> 16 passed in 0.46s
+uv run poe test-integration -> 7 passed in 2.15s (7 skipped without live container)
+coverage TOTAL, unit only -> TOTAL 297 42 50 8 82%
+coverage TOTAL, with integration tests -> TOTAL 297 12 50 2 96%
+```
+Two files or lines my coverage report says are never run, and whether they matter:
+`src/kubeguide/api/deps.py` (lines 35-43) and `src/kubeguide/db/repository.py` (lines 47-62) are skipped during unit tests because FakeRepo is injected; they don't matter for unit isolation as they are tested in integration runs.

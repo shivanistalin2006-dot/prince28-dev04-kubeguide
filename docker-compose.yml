@@ -28,6 +28,16 @@ services:
       timeout: 3s
       retries: 15
 
+  migrate:
+    build: .
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:app_local@db:5432/app  # pragma: allowlist secret
+    command: ["sh", "-c", "alembic upgrade head && python scripts/load_db.py"]
+
 volumes:
   pgdata:
   redisdata:

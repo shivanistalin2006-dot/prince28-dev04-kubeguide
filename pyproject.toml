@@ -56,3 +56,14 @@ show_missing = true
 skip_covered = true
 fail_under = 60
 
+[tool.poe.tasks]
+dev = "uvicorn kubeguide.api.main:create_app --factory --reload --port 8000"
+_ruff_check = "ruff check src tests scripts"
+_ruff_format = "ruff format --check src tests scripts"
+lint = ["_ruff_check", "_ruff_format"]
+test = "pytest tests/unit"
+cov = "pytest tests/unit --cov=kubeguide --cov-report=term-missing"
+migrate = "alembic upgrade head"
+seed = "python scripts/load_db.py"
+test-integration = "pytest tests/integration"
+

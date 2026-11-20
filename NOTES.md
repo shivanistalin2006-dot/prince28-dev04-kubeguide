@@ -129,3 +129,12 @@ Smoke test passed
 - Rolled forward to sha d995259 : 3 min
 - During the rollback, the database stayed on the newer schema. Why is that safe here?
   All migrations follow backward-compatible expansion rules (adding nullable columns or new tables). Older code versions only interact with the columns they know about, avoiding breaks against the existing schema.
+
+### Where my secrets live
+- Neon string: GitHub Secret DATABASE_URL + Render environment. Not in Git, not in the image.
+- Render deploy hook: GitHub Secret RENDER_DEPLOY_HOOK only.
+
+### Monitoring
+- UptimeRobot checks /health every 5 minutes; alerts go to my email.
+- One thing that would make my live app faster on its first request:
+  Upgrading from the Render Free tier to an instance with persistent worker memory prevents instance idling and eliminates cold-start spin-up latency.

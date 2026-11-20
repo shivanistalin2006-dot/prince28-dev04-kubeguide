@@ -30,3 +30,13 @@ jobs:
       url: ${{ vars.LIVE_URL }}
     env:
       SHA: ${{ github.event.inputs.sha || github.event.workflow_run.head_sha }}
+    steps:
+      # Normal deploy: the merged commit. Rollback: today's main (so the newest smoke test runs).
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      - uses: astral-sh/setup-uv@v10
+        with:
+          version: "0.11.32"
+          enable-cache: true
+      - run: uv sync --locked

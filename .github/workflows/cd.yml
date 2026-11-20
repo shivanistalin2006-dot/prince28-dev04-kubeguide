@@ -12,3 +12,21 @@ on:
       sha:
         description: "Full commit SHA to deploy (rollback). Migrations are skipped."
         required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  # never two deploys at once; queue instead of cancelling
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.LIVE_URL }}
+    env:
+      SHA: ${{ github.event.inputs.sha || github.event.workflow_run.head_sha }}

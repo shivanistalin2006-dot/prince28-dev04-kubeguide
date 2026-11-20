@@ -62,7 +62,7 @@ lint = ["_ruff_check", "_ruff_format"]
 _ruff_check = "ruff check src tests scripts"
 _ruff_format = "ruff format --check src tests scripts"
 test = "pytest tests/unit"
-cov = "pytest tests/unit --cov=kubeguide --cov-report=term-missing"
+cov = "pytest --cov=kubeguide --cov-report=term-missing"
 migrate = "alembic upgrade head"
 seed = "python scripts/load_db.py"
 

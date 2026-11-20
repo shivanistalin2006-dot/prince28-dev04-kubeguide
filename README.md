@@ -1,5 +1,7 @@
 # KubeGuide
 
+[![CI](https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions/workflows/ci.yml/badge.svg)](https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions/workflows/ci.yml)
+
 A Kubernetes assistant for on-call engineers that explains errors, objects and kubectl output from the official docs for the cluster's version.
 
 **Status:** Day 3 complete (PostgreSQL on Neon with Alembic migrations, idempotent loader, and metadata GIN index). Live URL from Day 5.

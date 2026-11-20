@@ -40,3 +40,9 @@ jobs:
           version: "0.11.32"
           enable-cache: true
       - run: uv sync --locked
+      - name: Run migrations on Neon (normal deploys only)
+        if: github.event_name == 'workflow_run'
+        env:
+          APP_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run alembic upgrade head

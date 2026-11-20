@@ -1,6 +1,7 @@
 # KubeGuide
 
 [![CI](https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions/workflows/ci.yml/badge.svg)](https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions/workflows/ci.yml)
+[![Live](https://img.shields.io/website?url=https%3A%2F%2Fkubeguide.onrender.com%2Fhealth&label=live)](https://kubeguide.onrender.com/docs)
 
 A Kubernetes assistant for on-call engineers that explains errors, objects and kubectl output from the official docs for the cluster's version.
 

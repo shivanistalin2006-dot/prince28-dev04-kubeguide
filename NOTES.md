@@ -109,3 +109,9 @@ coverage TOTAL, with integration tests -> TOTAL 297 12 50 2 96%
 ```
 Two files or lines my coverage report says are never run, and whether they matter:
 `src/kubeguide/api/deps.py` (lines 35-43) and `src/kubeguide/db/repository.py` (lines 47-62) are skipped during unit tests because FakeRepo is injected; they don't matter for unit isolation as they are tested in integration runs.
+
+## D05 · CI/CD and going live
+- Live URL: https://kubeguide.onrender.com
+- CI run for pull request 1: https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions
+- First deploy that ran by itself: https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions
+- Merge clicked at 13:24 → "Smoke test passed" at 13:28 → lead time: 4 min

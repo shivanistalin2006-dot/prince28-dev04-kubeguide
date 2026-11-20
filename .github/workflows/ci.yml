@@ -1,0 +1,16 @@
+# CI: every pull request and every push to main.
+# lint -> unit + integration tests (real Postgres) -> build the image -> push it (main only)
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # a newer push to the same branch cancels the older run
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true

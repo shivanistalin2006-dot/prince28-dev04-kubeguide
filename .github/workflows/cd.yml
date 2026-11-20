@@ -46,3 +46,11 @@ jobs:
           APP_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: uv run alembic upgrade head
+      - name: Tell Render to deploy this exact image
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:sha-${SHA}"
+          ENCODED=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$IMAGE")
+          echo "Deploying $IMAGE"
+          curl --fail --silent --show-error -X POST "${HOOK}&imgURL=${ENCODED}"

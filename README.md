@@ -10,6 +10,14 @@ A Kubernetes assistant for on-call engineers that explains errors, objects and k
 
 **Status:** Week 1 complete · live at https://kubeguide.onrender.com.
 
+### Live Endpoints
+- **Base URL / Docs Redirect:** `https://kubeguide.onrender.com/` (auto-redirects to interactive Swagger UI)
+- **Interactive OpenAPI Documentation:** `https://kubeguide.onrender.com/docs`
+- **Liveness probe:** `https://kubeguide.onrender.com/health` (returns JSON status, app, env, and git_sha)
+- **Readiness probe:** `https://kubeguide.onrender.com/ready` (verifies live database connectivity)
+- **Documents API:** `https://kubeguide.onrender.com/v1/documents`
+
+
 ## Who it's for
 Site reliability engineer at a Chennai logistics startup who is on call for three Kubernetes clusters.
 

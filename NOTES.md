@@ -109,3 +109,32 @@ coverage TOTAL, with integration tests -> TOTAL 297 12 50 2 96%
 ```
 Two files or lines my coverage report says are never run, and whether they matter:
 `src/kubeguide/api/deps.py` (lines 35-43) and `src/kubeguide/db/repository.py` (lines 47-62) are skipped during unit tests because FakeRepo is injected; they don't matter for unit isolation as they are tested in integration runs.
+
+## D05 · CI/CD and going live
+- Live URL: https://kubeguide.onrender.com
+- CI run for pull request 1: https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions
+- First deploy that ran by itself: https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions
+- Merge clicked at 13:24 → "Smoke test passed" at 13:28 → lead time: 4 min
+
+### Smoke test output from that CD run
+```text
+ok /health -> 200, version 1ad8337
+ok /ready -> 200 {'status': 'ready', 'checks': {'database': True}}
+ok /v1/documents?limit=1 -> 200
+Smoke test passed
+```
+
+### Rollback drill
+- Rolled back to sha 1ad8337 : started 13:29, smoke passed 13:32 (3 min)
+- Rolled forward to sha d995259 : 3 min
+- During the rollback, the database stayed on the newer schema. Why is that safe here?
+  All migrations follow backward-compatible expansion rules (adding nullable columns or new tables). Older code versions only interact with the columns they know about, avoiding breaks against the existing schema.
+
+### Where my secrets live
+- Neon string: GitHub Secret DATABASE_URL + Render environment. Not in Git, not in the image.
+- Render deploy hook: GitHub Secret RENDER_DEPLOY_HOOK only.
+
+### Monitoring
+- UptimeRobot checks /health every 5 minutes; alerts go to my email.
+- One thing that would make my live app faster on its first request:
+  Upgrading from the Render Free tier to an instance with persistent worker memory prevents instance idling and eliminates cold-start spin-up latency.

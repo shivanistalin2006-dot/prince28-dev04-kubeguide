@@ -41,20 +41,34 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - name: Run migrations on Neon (normal deploys only)
-        if: github.event_name == 'workflow_run' && secrets.DATABASE_URL != ''
+        if: github.event_name == 'workflow_run'
         env:
           APP_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: uv run alembic upgrade head
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            uv run alembic upgrade head
+          else
+            echo "DATABASE_URL secret is not set; skipping migrations."
+          fi
       - name: Tell Render to deploy this exact image
-        if: secrets.RENDER_DEPLOY_HOOK != ''
         env:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
+          if [ -z "$HOOK" ]; then
+            echo "RENDER_DEPLOY_HOOK secret is not set; skipping Render deployment trigger."
+            exit 0
+          fi
           IMAGE="ghcr.io/${GITHUB_REPOSITORY,,}:sha-${SHA}"
           ENCODED=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$IMAGE")
           echo "Deploying $IMAGE"
           curl --fail --silent --show-error -X POST "${HOOK}&imgURL=${ENCODED}"
       - name: Smoke test the live URL
-        if: vars.LIVE_URL != ''
-        run: uv run python scripts/smoke.py "${{ vars.LIVE_URL }}" --expect-version "${SHA}"
+        env:
+          LIVE_URL: ${{ vars.LIVE_URL }}
+        run: |
+          if [ -z "$LIVE_URL" ]; then
+            echo "LIVE_URL variable is not set; skipping live smoke test."
+            exit 0
+          fi
+          uv run python scripts/smoke.py "$LIVE_URL" --expect-version "${SHA}"

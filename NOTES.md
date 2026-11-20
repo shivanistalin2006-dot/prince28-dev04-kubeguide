@@ -112,6 +112,8 @@ Two files or lines my coverage report says are never run, and whether they matte
 
 ## D05 · CI/CD and going live
 - Live URL: https://kubeguide.onrender.com
+- OpenAPI Docs: https://kubeguide.onrender.com/docs
+- Root path `/`: Configured with HTTP redirect to `/docs` for seamless browser exploration.
 - CI run for pull request 1: https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions
 - First deploy that ran by itself: https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions
 - Merge clicked at 13:24 → "Smoke test passed" at 13:28 → lead time: 4 min

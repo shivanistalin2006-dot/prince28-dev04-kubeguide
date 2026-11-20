@@ -11,8 +11,10 @@ from kubeguide.config import Settings, get_settings
 from kubeguide.db.repository import DocumentRepository
 
 
-def get_app_settings() -> Settings:
+def get_app_settings(request: Request) -> Settings:
     """Dependency to retrieve application settings."""
+    if hasattr(request.app.state, "settings") and request.app.state.settings is not None:
+        return request.app.state.settings
     return get_settings()
 
 

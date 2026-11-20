@@ -10,7 +10,20 @@ from kubeguide.config import Settings
 def test_health_is_ok(client):
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json()["status"] == "ok"
+    body = r.json()
+    assert body["status"] == "ok"
+    assert body["app"] == "kubeguide"
+    assert body["env"] == "ci"
+    assert body["version"] == "dev"
+
+
+def test_health_shows_git_sha(settings):
+    settings.git_sha = "abc1234"
+    app = create_app(settings)
+    with TestClient(app) as c:
+        r = c.get("/health")
+        assert r.status_code == 200
+        assert r.json()["version"] == "abc1234"
 
 
 def test_ready_when_database_up(client):

@@ -15,11 +15,12 @@ router = APIRouter(tags=["health"])
 def get_health(
     settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> dict[str, Any]:
-    """Liveness probe: verifies service process is running."""
+    """Liveness probe: verifies service process is running and returns version."""
     return {
         "status": "ok",
         "app": settings.app_name,
-        "environment": settings.app_env,
+        "env": settings.app_env,
+        "version": settings.git_sha,
     }
 
 

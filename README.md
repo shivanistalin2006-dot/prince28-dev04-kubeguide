@@ -4,6 +4,8 @@
 [![Live](https://img.shields.io/website?url=https%3A%2F%2Fkubeguide.onrender.com%2Fhealth&label=live)](https://kubeguide.onrender.com/docs)
 [![Uptime (30 days)](https://img.shields.io/uptimerobot/ratio/m799982461-kubeguide)](https://kubeguide.onrender.com/health)
 
+**Live:** https://kubeguide.onrender.com · [API docs](https://kubeguide.onrender.com/docs) · [health](https://kubeguide.onrender.com/health)
+
 A Kubernetes assistant for on-call engineers that explains errors, objects and kubectl output from the official docs for the cluster's version.
 
 **Status:** Day 3 complete (PostgreSQL on Neon with Alembic migrations, idempotent loader, and metadata GIN index). Live URL from Day 5.

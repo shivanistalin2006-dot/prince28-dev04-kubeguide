@@ -8,7 +8,7 @@
 
 A Kubernetes assistant for on-call engineers that explains errors, objects and kubectl output from the official docs for the cluster's version.
 
-**Status:** Day 3 complete (PostgreSQL on Neon with Alembic migrations, idempotent loader, and metadata GIN index). Live URL from Day 5.
+**Status:** Week 1 complete · live at https://kubeguide.onrender.com.
 
 ## Who it's for
 Site reliability engineer at a Chennai logistics startup who is on call for three Kubernetes clusters.

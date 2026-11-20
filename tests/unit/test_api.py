@@ -137,3 +137,9 @@ def test_empty_search_returns_zero_items(client):
     body = r.json()
     assert body["total"] == 0
     assert len(body["items"]) == 0
+
+
+def test_root_redirects_to_docs(client):
+    r = client.get("/", follow_redirects=False)
+    assert r.status_code in (302, 307)
+    assert r.headers["location"] == "/docs"

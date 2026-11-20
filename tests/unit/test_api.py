@@ -17,6 +17,16 @@ def test_health_is_ok(client):
     assert body["version"] == "dev"
 
 
+def test_health_shows_git_sha(settings):
+    settings.git_sha = "abc1234"
+    app = create_app(settings)
+    with TestClient(app) as c:
+        r = c.get("/health")
+        assert r.status_code == 200
+        assert r.json()["version"] == "abc1234"
+
+
+
 def test_ready_when_database_up(client):
     r = client.get("/ready")
     assert r.status_code == 200

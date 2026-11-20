@@ -41,12 +41,13 @@ jobs:
           enable-cache: true
       - run: uv sync --locked
       - name: Run migrations on Neon (normal deploys only)
-        if: github.event_name == 'workflow_run'
+        if: github.event_name == 'workflow_run' && secrets.DATABASE_URL != ''
         env:
           APP_ENV: production
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: uv run alembic upgrade head
       - name: Tell Render to deploy this exact image
+        if: secrets.RENDER_DEPLOY_HOOK != ''
         env:
           HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
         run: |
@@ -55,4 +56,5 @@ jobs:
           echo "Deploying $IMAGE"
           curl --fail --silent --show-error -X POST "${HOOK}&imgURL=${ENCODED}"
       - name: Smoke test the live URL
+        if: vars.LIVE_URL != ''
         run: uv run python scripts/smoke.py "${{ vars.LIVE_URL }}" --expect-version "${SHA}"

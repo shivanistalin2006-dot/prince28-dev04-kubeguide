@@ -11,7 +11,7 @@ from kubeguide.config import Settings
 router = APIRouter(tags=["health"])
 
 
-@router.get("/health")
+@router.api_route("/health", methods=["GET", "HEAD"])
 def get_health(
     settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> dict[str, Any]:
@@ -24,7 +24,7 @@ def get_health(
     }
 
 
-@router.get("/ready")
+@router.api_route("/ready", methods=["GET", "HEAD"])
 async def get_ready(
     db_ok: Annotated[bool, Depends(check_db)],
 ) -> Any:

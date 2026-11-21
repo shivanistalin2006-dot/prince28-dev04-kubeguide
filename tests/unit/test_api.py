@@ -26,6 +26,11 @@ def test_health_shows_git_sha(settings):
         assert r.json()["version"] == "abc1234"
 
 
+def test_health_head_method(client):
+    r = client.head("/health")
+    assert r.status_code == 200
+
+
 def test_ready_when_database_up(client):
     r = client.get("/ready")
     assert r.status_code == 200

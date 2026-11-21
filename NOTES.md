@@ -140,3 +140,11 @@ Smoke test passed
 - UptimeRobot checks /health every 5 minutes; alerts go to my email.
 - One thing that would make my live app faster on its first request:
   Upgrading from the Render Free tier to an instance with persistent worker memory prevents instance idling and eliminates cold-start spin-up latency.
+
+### Stretch tasks
+- Human gate (continuous delivery):
+  A manual approval gate before production deployment is valuable during planned change freezes, compliance audits, or multi-service synchronized releases where coordinated operational sign-off is required.
+- DORA Lead Time & CI/CD Performance:
+  - CD Run 1 lead time: ~4 minutes (PR merge to smoke test green).
+  - CD Run 2 lead time: ~3.5 minutes.
+  - Slowest step: Render container pulling and booting (takes ~60-90s on free instance).

@@ -1,0 +1,17 @@
+# Sources for KubeGuide. One row per file to download. Lines starting with # are notes.
+# Start target: Concepts + tasks pages (about 700 pages)
+# Where to look:
+# https://github.com/kubernetes/website
+# https://kubernetes.io/docs/reference/using-api/deprecation-guide/
+# Terms on my project card: Kubernetes docs CC BY 4.0.
+url,source,licence,title
+https://kubernetes.io/docs/concepts/workloads/controllers/deployment/,kubernetes-io,"CC BY 4.0",Deployment concept
+https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/,kubernetes-io,"CC BY 4.0",StatefulSet concept
+https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/,kubernetes-io,"CC BY 4.0",Pull image private registry
+https://kubernetes.io/docs/reference/using-api/deprecation-guide/,kubernetes-io,"CC BY 4.0",Deprecated API migration guide
+https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/,kubernetes-io,"CC BY 4.0",Pod lifecycle and restart policies
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/,kubernetes-io,"CC BY 4.0",Liveness readiness and startup probes
+https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/,kubernetes-io,"CC BY 4.0",Debug pods and CrashLoopBackOff
+https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/,kubernetes-io,"CC BY 4.0",Debug services and endpoints
+https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/,kubernetes-io,"CC BY 4.0",Manage resources for containers
+https://kubernetes.io/docs/reference/access-authn-authz/rbac/,kubernetes-io,"CC BY 4.0",Using RBAC authorization

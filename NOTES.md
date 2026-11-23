@@ -148,3 +148,35 @@ Smoke test passed
   - CD Run 1 lead time: ~4 minutes (PR merge to smoke test green).
   - CD Run 2 lead time: ~3.5 minutes.
   - Slowest step: Render container pulling and booting (takes ~60-90s on free instance).
+
+## D06 · Collecting the corpus
+- Start target: Concepts + tasks pages (about 700 pages)
+- Collected today: 422 files, 1,505 pages, 9.7 MB (from DATASET.md)
+- Doors used: URL list / Git repository
+
+### Licence check
+| Source | Licence or terms, in my words | May I show full text in answers? |
+|---|---|---|
+| k8s-docs (kubernetes/website) | CC BY 4.0 (attribution required, commercial & derivative use permitted) | Yes, with citation and original link |
+| kubernetes-io (docs pages) | CC BY 4.0 (attribution required, commercial & derivative use permitted) | Yes, with citation and original link |
+
+### robots.txt
+- Site: https://kubernetes.io . Its robots.txt says (2 lines):
+  User-agent: *
+  Allow: /
+- Was anything blocked for my bot? What did I do about it?
+  No, 0 files were blocked. The crawler identifies as examate-student-bot/0.1 with repository contact info and respects all robots.txt rules.
+
+### Kill and resume
+- Run 1: I pressed Ctrl+C after 3 files
+- Run 2: downloaded=7 skipped=3
+- Run 3: downloaded=0 skipped=10
+
+### Capacity (from docs/CAPACITY.md)
+- Tokens per page, measured: 750
+- Full corpus: 1.87 M tokens, 5,391 chunks, embedding about Rs 31, vectors 17 MB
+- The number that surprised me most, and why (2 lines):
+  The total storage for the full corpus vectors and text is only ~26 MB, proving that an extensive technical corpus easily fits into free-tier serverless PostgreSQL without high infra costs.
+
+### One thing that went wrong today, and how I fixed it
+Door 2 initially encountered a non-empty directory error when cloning into data/raw/k8s-docs because the initial 10 URL downloads used the same directory name; separating sources in data/sources.csv to kubernetes-io resolved the conflict cleanly.

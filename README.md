@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions/workflows/ci.yml/badge.svg)](https://github.com/shivanistalin2006-dot/prince28-dev04-kubeguide/actions/workflows/ci.yml)
 [![Live](https://img.shields.io/website?url=https%3A%2F%2Fkubeguide.onrender.com%2Fhealth&label=live)](https://kubeguide.onrender.com/docs)
-[![Uptime (30 days)](https://img.shields.io/uptimerobot/ratio/m799982461-kubeguide)](https://kubeguide.onrender.com/health)
+[![Uptime (30 days)](https://img.shields.io/uptimerobot/ratio/m804757931-c4d447810b7c94d8d78915f7)](https://kubeguide.onrender.com/health)
 
 **Live:** https://kubeguide.onrender.com · [API docs](https://kubeguide.onrender.com/docs) · [health](https://kubeguide.onrender.com/health)
 

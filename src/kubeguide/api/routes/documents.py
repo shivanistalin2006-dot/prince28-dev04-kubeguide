@@ -13,7 +13,11 @@ router = APIRouter(prefix="/v1/documents", tags=["documents"])
 RESERVED_PARAMS = {"q", "limit", "offset"}
 
 
-@router.get("")
+@router.get(
+    "",
+    summary="List documents",
+    description="Query documents with optional text search, pagination, and metadata filters.",
+)
 async def list_documents(
     repo: Annotated[DocumentRepository, Depends(get_repo)],
     request: Request,

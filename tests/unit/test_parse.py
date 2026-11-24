@@ -204,3 +204,20 @@ def test_parse_pdf_scanned_pages_detection(tmp_path: Path) -> None:
 
     parsed = parse_pdf_pymupdf(pdf_path)
     assert parsed.metadata.get("scanned_pages") == [2]
+
+
+def test_parse_text_extracts_frontmatter_title_and_strips_metadata(tmp_path: Path) -> None:
+    md_file = tmp_path / "sample.md"
+    content = (
+        "---\n"
+        "title: Pod Security Standards\n"
+        "weight: 10\n"
+        "---\n\n"
+        "Pod Security Standards define different isolation levels for Pods.\n"
+        "Administrators can enforce these standards cluster-wide."
+    )
+    md_file.write_text(content, encoding="utf-8")
+    parsed = parse_file(md_file)
+    assert parsed.title == "Pod Security Standards"
+    assert "weight: 10" not in parsed.pages[0].text
+    assert "Pod Security Standards define" in parsed.pages[0].text

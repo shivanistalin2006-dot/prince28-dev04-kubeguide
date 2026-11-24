@@ -47,6 +47,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
         duration_ms = (time.perf_counter() - start_time) * 1000
         response.headers["X-Request-ID"] = request_id
+        response.headers["X-Process-Time"] = f"{duration_ms:.2f}ms"
 
         logger.info(
             "request completed",

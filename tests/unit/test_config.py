@@ -33,7 +33,8 @@ def test_settings_url_conversion_to_asyncpg() -> None:
     assert settings.database_url.startswith("postgresql+asyncpg://")
 
 
-def test_settings_requires_app_env() -> None:
+def test_settings_requires_app_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("APP_ENV", raising=False)
     with pytest.raises(ValidationError):
         # Omitting app_env must fail fast
         Settings(_env_file=None)  # type: ignore[call-arg]

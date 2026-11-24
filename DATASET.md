@@ -237,6 +237,13 @@ The complete list, with a sha256 fingerprint of every file, is `data/manifest.js
 | 200 | content/en/docs/tasks/access-application-cluster/list-all-running-container-images.md | k8s-docs | 1 | 2026-11-23 | https://github.com/kubernetes/website/blob/HEAD/content/en/docs/tasks/access-application-cluster/list-all-running-container-images.md |
 <!-- generated:end -->
 
+## Ingestion & Parsing Coverage
+
+- **Raw Files in Corpus:** 422 files (412 Markdown/YAML in `data/raw/k8s-docs/`, 10 HTML in `data/raw/kubernetes-io/`)
+- **Parsed into PostgreSQL:** 422 files
+- **Parsing Coverage:** 100.0% (422 / 422 files)
+- **Dead-letter Failures:** 0 unresolved failures in `parse_failures`
+
 ## Known gaps
 
 - Release notes and deprecated API migration guides for the remaining 3 previous versions will be added in the full corpus phase.

@@ -17,6 +17,14 @@ A Kubernetes assistant for on-call engineers that explains errors, objects and k
 - **Readiness probe:** `https://kubeguide.onrender.com/ready` (verifies live database connectivity)
 - **Documents API:** `https://kubeguide.onrender.com/v1/documents`
 
+### Documentation & Guides
+- [Architecture & Design](docs/ARCHITECTURE.md): System components, dataflow, and reliability model.
+- [SRE Incident Runbook](docs/RUNBOOK.md): Fast diagnostic workflows for CrashLoopBackOff, ImagePullBackOff, and OOMKilled.
+- [API Reference Guide](docs/API_GUIDE.md): Endpoints, response schemas, and curl examples.
+- [Contributing Guide](docs/CONTRIBUTING.md): Local development, test execution, and code style.
+- [Dataset Report](DATASET.md): Corpus sources, licensing, and manifest summary.
+- [Capacity Plan](docs/CAPACITY.md): Token counts and database headroom projections.
+
 
 ## Who it's for
 Site reliability engineer at a Chennai logistics startup who is on call for three Kubernetes clusters.

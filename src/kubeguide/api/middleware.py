@@ -1,6 +1,7 @@
 """Request ID, timing, structured logging, and crash-net middleware."""
 
 import logging
+import re
 import time
 from uuid import uuid4
 
@@ -11,14 +12,15 @@ from kubeguide.api.errors import problem_response
 
 logger = logging.getLogger(__name__)
 
+_SAFE_REQUEST_ID_REGEX = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Assigns request ID, tracks timing, logs access, and catches unhandled exceptions."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
-        request_id = request.headers.get("X-Request-ID")
-        if not request_id:
-            request_id = uuid4().hex[:16]
+        raw_id = (request.headers.get("X-Request-ID") or "").strip()
+        request_id = raw_id if raw_id and _SAFE_REQUEST_ID_REGEX.match(raw_id) else uuid4().hex[:16]
 
         request.state.request_id = request_id
         start_time = time.perf_counter()

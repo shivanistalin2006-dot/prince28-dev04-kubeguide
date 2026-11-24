@@ -11,7 +11,12 @@ from kubeguide.config import Settings
 router = APIRouter(tags=["health"])
 
 
-@router.api_route("/health", methods=["GET", "HEAD"])
+@router.api_route(
+    "/health",
+    methods=["GET", "HEAD"],
+    summary="Liveness probe",
+    description="Returns service status, environment name, and running commit SHA.",
+)
 def get_health(
     settings: Annotated[Settings, Depends(get_app_settings)],
 ) -> dict[str, Any]:
@@ -24,7 +29,12 @@ def get_health(
     }
 
 
-@router.api_route("/ready", methods=["GET", "HEAD"])
+@router.api_route(
+    "/ready",
+    methods=["GET", "HEAD"],
+    summary="Readiness probe",
+    description="Verifies PostgreSQL database connectivity via AsyncPG.",
+)
 async def get_ready(
     db_ok: Annotated[bool, Depends(check_db)],
 ) -> Any:

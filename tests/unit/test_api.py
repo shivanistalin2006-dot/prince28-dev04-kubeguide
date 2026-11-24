@@ -2,9 +2,10 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from kubeguide.api.deps import check_db
+from kubeguide.api.deps import check_db, get_repo
 from kubeguide.api.main import create_app
 from kubeguide.config import Settings
+from tests.unit.conftest import FakeRepo
 
 
 def test_health_is_ok(client):
@@ -108,6 +109,39 @@ def test_get_document_pages_missing_page_number(client):
     r = client.get("/v1/documents/001/pages", params={"page_no": 99})
     assert r.status_code == 404
     assert r.headers["content-type"] == "application/problem+json"
+
+
+def test_get_document_with_path_id(settings, db_state):
+    rows = [
+        {
+            "id": "data/raw/k8s/networking.md",
+            "title": "Cluster Networking",
+            "year": 2024,
+            "kind": "concept",
+            "pages": [
+                {
+                    "page_no": 1,
+                    "text": "CNI plugins provide pod IP addresses.",
+                    "headings": ["CNI"],
+                }
+            ],
+        }
+    ]
+    app = create_app(settings)
+    app.dependency_overrides[get_repo] = lambda: FakeRepo(rows)
+    app.dependency_overrides[check_db] = lambda: db_state["up"]
+    with TestClient(app) as c:
+        r = c.get("/v1/documents/data/raw/k8s/networking.md")
+        assert r.status_code == 200
+        assert r.json()["title"] == "Cluster Networking"
+
+        r_page = c.get("/v1/documents/data/raw/k8s/networking.md/pages", params={"page_no": 1})
+        assert r_page.status_code == 200
+        page = r_page.json()
+        assert page["document_id"] == "data/raw/k8s/networking.md"
+        assert page["page_no"] == 1
+        assert "CNI plugins provide" in page["text"]
+        assert page["headings"] == ["CNI"]
 
 
 def test_bad_limit_is_422_problem(client):

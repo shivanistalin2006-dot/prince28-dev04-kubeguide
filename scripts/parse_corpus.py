@@ -24,7 +24,7 @@ from kubeguide.ingest.store import record_parse_failure, store_parsed_doc
 logging.basicConfig(level=logging.WARNING)
 
 
-async def main() -> int:
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Parse raw documents into PostgreSQL.")
     parser.add_argument("--limit", type=int, default=None, help="Stop after processing N files.")
     parser.add_argument(
@@ -61,6 +61,11 @@ async def main() -> int:
         default=Path("data/manifest.jsonl"),
         help="Path to manifest file.",
     )
+    return parser
+
+
+async def main() -> int:
+    parser = build_arg_parser()
     args = parser.parse_args()
 
     settings = get_settings()

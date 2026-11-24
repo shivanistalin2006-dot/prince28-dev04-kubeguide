@@ -51,6 +51,11 @@ async def main() -> int:
         help="PDF parsing engine to use.",
     )
     parser.add_argument(
+        "--show-failures",
+        action="store_true",
+        help="Display all unparseable files recorded in the dead-letter parse_failures table.",
+    )
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=Path("data/manifest.jsonl"),
@@ -58,13 +63,29 @@ async def main() -> int:
     )
     args = parser.parse_args()
 
-    if not args.manifest.exists():
-        print(f"Manifest not found: {args.manifest}", file=sys.stderr)
-        return 1
-
     settings = get_settings()
     engine = make_engine(settings)
     session_factory = make_sessionmaker(engine)
+
+    if args.show_failures:
+        async with session_factory() as session:
+            failures = (await session.scalars(select(ParseFailure).order_by(ParseFailure.id))).all()
+            if not failures:
+                print("No failures recorded in dead-letter table parse_failures.")
+            else:
+                print(f"Total dead-letter failures recorded: {len(failures)}")
+                for f in failures:
+                    print(
+                        f"  [{f.reason}] {f.path} (attempts: {f.attempts})\n"
+                        f"    Detail: {f.detail}\n"
+                    )
+        await engine.dispose()
+        return 0
+
+    if not args.manifest.exists():
+        print(f"Manifest not found: {args.manifest}", file=sys.stderr)
+        await engine.dispose()
+        return 1
 
     # 1. Inspect database for already parsed files and prior failures
     async with session_factory() as session:

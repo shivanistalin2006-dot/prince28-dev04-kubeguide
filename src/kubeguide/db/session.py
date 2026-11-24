@@ -12,11 +12,16 @@ from kubeguide.config import Settings
 
 def make_engine(settings: Settings) -> AsyncEngine:
     """Build an AsyncEngine configured for Postgres/asyncpg."""
+    connect_args = {}
+    if "asyncpg" in settings.database_url:
+        connect_args["statement_cache_size"] = 0
+
     return create_async_engine(
         settings.database_url,
         echo=False,
         future=True,
         pool_pre_ping=True,
+        connect_args=connect_args,
     )
 
 

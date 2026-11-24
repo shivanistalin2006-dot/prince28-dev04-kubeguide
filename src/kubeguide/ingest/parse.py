@@ -297,12 +297,30 @@ def split_pages(text: str, size: int = PAGE_CHARS) -> list[str]:
     return pages
 
 
+def extract_frontmatter(text: str) -> tuple[str, str]:
+    """Extract frontmatter title if present and return (title, clean_body)."""
+    match = re.match(r"^---\s*\n(.*?)\n---\s*\n?(.*)", text, re.DOTALL)
+    if not match:
+        return "", text
+    fm, body = match.group(1), match.group(2)
+    title_match = re.search(r"^title:\s*[\"']?(.*?)[\"']?\s*$", fm, re.MULTILINE)
+    title = title_match.group(1).strip() if title_match else ""
+    return title, body
+
+
 def parse_text(path: Path) -> ParsedDoc:
     suffix = path.suffix.lower()
     text = path.read_text(encoding="utf-8", errors="replace")
     if suffix in DATA_TYPES:
         return finish("plain", "data", path.stem, split_pages(text))
-    return finish("plain", "text", "", split_pages(markup_to_markdown(text, suffix)))
+
+    title, body = extract_frontmatter(text)
+    return finish(
+        "plain",
+        "text",
+        title,
+        split_pages(markup_to_markdown(body, suffix)),
+    )
 
 
 PDF_PARSERS = {"pymupdf": parse_pdf_pymupdf, "pypdf": parse_pdf_pypdf}

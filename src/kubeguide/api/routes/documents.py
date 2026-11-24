@@ -53,23 +53,7 @@ async def list_documents(
     }
 
 
-@router.get("/{doc_id}")
-async def get_document(
-    doc_id: str,
-    request: Request,
-    repo: Annotated[DocumentRepository, Depends(get_repo)],
-) -> dict[str, Any]:
-    """Retrieve a single document by its identifier."""
-    doc = await repo.get(doc_id)
-    if not doc:
-        raise NotFoundProblem(
-            detail=f"No document with id '{doc_id}'.",
-            instance=request.url.path,
-        )
-    return doc
-
-
-@router.get("/{doc_id}/pages")
+@router.get("/{doc_id:path}/pages")
 async def get_document_pages(
     doc_id: str,
     request: Request,
@@ -89,3 +73,19 @@ async def get_document_pages(
             instance=request.url.path,
         )
     return result
+
+
+@router.get("/{doc_id:path}")
+async def get_document(
+    doc_id: str,
+    request: Request,
+    repo: Annotated[DocumentRepository, Depends(get_repo)],
+) -> dict[str, Any]:
+    """Retrieve a single document by its identifier."""
+    doc = await repo.get(doc_id)
+    if not doc:
+        raise NotFoundProblem(
+            detail=f"No document with id '{doc_id}'.",
+            instance=request.url.path,
+        )
+    return doc

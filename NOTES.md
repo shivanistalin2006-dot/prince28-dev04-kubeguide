@@ -180,3 +180,50 @@ Smoke test passed
 
 ### One thing that went wrong today, and how I fixed it
 Door 2 initially encountered a non-empty directory error when cloning into data/raw/k8s-docs because the initial 10 URL downloads used the same directory name; separating sources in data/sources.csv to kubernetes-io resolved the conflict cleanly.
+
+## D07 · Parsing my corpus
+
+### Corpus Parsing Summary
+- Files in manifest: 422 files (412 Markdown/YAML from `kubernetes/website`, 10 HTML from `kubernetes.io`)
+- Files parsed into PostgreSQL: 422 files (100% coverage after failure retry)
+- Total pages extracted: 1,710 pages stored in PostgreSQL `pages` table
+- Dead-letter failures remaining: 0 unresolved failures in `parse_failures`
+- Parser idempotency: Verified by running `python scripts/parse_corpus.py` twice; subsequent run skips already-parsed files and completes in <1s.
+
+### Parser Engine Comparison (10 Complex Files)
+We evaluated `trafilatura` against raw DOM text extraction (`lxml`) across 10 intricate Kubernetes documentation pages containing headers, navigations, sidebars, and code blocks:
+
+| File | Trafilatura (chars) | Lxml (chars) | Diff (chars) | Trafilatura (ms) | Lxml (ms) | Verdict |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| `configure-liveness-readiness-startup-probes-e1c0be00.html` | 14,799 | 41,622 | -26,823 | 290.6 | 27.7 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `debug-pods-b62c530a.html` | 6,967 | 31,989 | -25,022 | 164.4 | 25.7 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `debug-service-261a96a8.html` | 20,111 | 46,724 | -26,613 | 221.5 | 24.7 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `deployment-d9a16560.html` | 45,604 | 78,352 | -32,748 | 321.2 | 30.5 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `deprecation-guide-0fc64549.html` | 10,258 | 42,583 | -32,325 | 189.8 | 23.1 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `manage-resources-containers-d3611dbe.html` | 26,334 | 56,539 | -30,205 | 263.6 | 28.6 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `pod-lifecycle-3e34f258.html` | 40,437 | 67,060 | -26,623 | 344.1 | 28.6 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `pull-image-private-registry-2e249b9b.html` | 7,616 | 33,653 | -26,037 | 198.1 | 27.8 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `rbac-6be4067d.html` | 42,345 | 69,171 | -26,826 | 490.0 | 40.0 | trafilatura preferred: cleanly stripped nav/boilerplates |
+| `statefulset-f82fae6f.html` | 22,127 | 51,086 | -28,959 | 260.6 | 26.4 | trafilatura preferred: cleanly stripped nav/boilerplates |
+
+### What broke, and how I fixed it
+1. **AsyncPG Cached Statement Invalidation on Neon:**
+   - *Problem:* After executing DDL alterations (`ALTER TABLE documents ...`), asyncpg connections to Neon threw `InvalidCachedStatementError: cached statement plan is invalid due to a database schema or configuration change`.
+   - *Fix:* Configured `connect_args={"statement_cache_size": 0}` in `src/kubeguide/db/session.py`. Disabling prepared statement caching ensures full compatibility with cloud connection poolers like Neon and PgBouncer.
+2. **Column Length Limit for Deep File Paths:**
+   - *Problem:* `Document.external_id` was initially constrained to `VARCHAR(64)`. Relative file paths such as `data/raw/k8s-docs/content/en/docs/concepts/architecture/mixed-version-proxy.md` (77 characters) failed with `value too long for type character varying(64)`.
+   - *Fix:* Widened `external_id` from `VARCHAR(64)` to `VARCHAR(255)` in `models.py` and applied the database schema migration via Alembic.
+3. **Variable Shadowing in SQLAlchemy Models:**
+   - *Problem:* Inside `class Page(Base)`, defining a column named `text` shadowed SQLAlchemy's `text()` function, preventing default expressions like `text("'[]'::jsonb")`.
+   - *Fix:* Used `server_default="[]"` for the `headings` column instead of calling `text()`.
+
+### Stretch Tasks Implemented
+1. **Page-by-page Scan Detection:**
+   - Multi-page PDF ingestion in `src/kubeguide/ingest/parse.py` analyzes each page individually. Pages with fewer than 40 extracted characters are flagged as scanned/blank and stored in document metadata as `scanned_pages: [page_no, ...]`.
+   - Verified by unit test `test_parse_pdf_scan_detection_records_scanned_pages`.
+2. **Document Pages API Endpoint:**
+   - Added `GET /v1/documents/{doc_id}/pages` supporting both full page list retrieval and specific page querying via `?page_no=N`.
+   - Returns RFC 7807 problem details (`404 Not Found`) when the document or specific page number does not exist.
+   - Fully unit tested in `tests/unit/test_api.py`.
+3. **Corpus Coverage Calculation:**
+   - Documented in `DATASET.md`: 422 files parsed out of 422 files in manifest = 100.0% corpus coverage.

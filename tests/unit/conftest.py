@@ -7,9 +7,18 @@ from kubeguide.config import Settings
 
 # Tiny fake records: unit tests never touch a real database or your data file.
 SAMPLE = [
-    {"id": "001", "title": "Alpha guideline", "year": 2023, "kind": "guideline"},
-    {"id": "002", "title": "Beta circular", "year": 2024, "kind": "circular"},
-    {"id": "003", "title": "Gamma notice", "year": 2025, "kind": "circular"},
+    {
+        "id": "001",
+        "title": "Alpha guideline",
+        "year": 2023,
+        "kind": "guideline",
+        "pages": [
+            {"page_no": 1, "text": "Alpha page 1 content", "headings": ["Introduction"]},
+            {"page_no": 2, "text": "Alpha page 2 content", "headings": ["Details"]},
+        ],
+    },
+    {"id": "002", "title": "Beta circular", "year": 2024, "kind": "circular", "pages": []},
+    {"id": "003", "title": "Gamma notice", "year": 2025, "kind": "circular", "pages": []},
 ]
 
 
@@ -30,6 +39,23 @@ class FakeRepo:
 
     async def get(self, external_id):
         return next((r for r in self.rows if r["id"] == external_id), None)
+
+    async def get_pages(self, external_id, page_no=None):
+        doc = next((r for r in self.rows if r["id"] == external_id), None)
+        if not doc:
+            return False, None
+        pages = doc.get("pages", [])
+        if page_no is not None:
+            page = next((p for p in pages if p["page_no"] == page_no), None)
+            if not page:
+                return True, None
+            return True, {
+                "document_id": external_id,
+                "page_no": page["page_no"],
+                "text": page["text"],
+                "headings": page["headings"],
+            }
+        return True, pages
 
 
 @pytest.fixture

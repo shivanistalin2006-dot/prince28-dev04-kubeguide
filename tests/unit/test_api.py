@@ -79,6 +79,37 @@ def test_missing_document_is_problem_details(client):
     assert body["request_id"] == r.headers["X-Request-ID"]
 
 
+def test_get_document_pages_all(client):
+    r = client.get("/v1/documents/001/pages")
+    assert r.status_code == 200
+    pages = r.json()
+    assert len(pages) == 2
+    assert pages[0]["page_no"] == 1
+    assert pages[0]["headings"] == ["Introduction"]
+
+
+def test_get_document_single_page(client):
+    r = client.get("/v1/documents/001/pages", params={"page_no": 1})
+    assert r.status_code == 200
+    page = r.json()
+    assert page["document_id"] == "001"
+    assert page["page_no"] == 1
+    assert page["text"] == "Alpha page 1 content"
+    assert page["headings"] == ["Introduction"]
+
+
+def test_get_document_pages_missing_doc(client):
+    r = client.get("/v1/documents/999/pages")
+    assert r.status_code == 404
+    assert r.headers["content-type"] == "application/problem+json"
+
+
+def test_get_document_pages_missing_page_number(client):
+    r = client.get("/v1/documents/001/pages", params={"page_no": 99})
+    assert r.status_code == 404
+    assert r.headers["content-type"] == "application/problem+json"
+
+
 def test_bad_limit_is_422_problem(client):
     r = client.get("/v1/documents", params={"limit": 0})
     assert r.status_code == 422

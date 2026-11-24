@@ -1,5 +1,5 @@
 # Shortcuts for Mac/Linux. On Windows, run the same tasks with: uv run poe <task>
-.PHONY: dev test test-integration cov lint up down logs reset
+.PHONY: dev test test-integration cov lint format up down logs reset stats manifest
 
 dev:
 	uv run poe dev
@@ -15,6 +15,15 @@ cov:
 
 lint:
 	uv run poe lint
+
+format:
+	uv run ruff format .
+
+stats:
+	uv run python scripts/db_stats.py
+
+manifest:
+	uv run python scripts/manifest_summary.py
 
 up:
 	docker compose up --build -d

@@ -1,12 +1,14 @@
 """All SQL for documents lives here. Endpoints never write SQL themselves."""
 
+from __future__ import annotations
+
 import re
 from typing import Any
 
 from sqlalchemy import Text, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from kubeguide.db.models import Document
+from kubeguide.db.models import Document, Page
 
 FILTER_KEY = re.compile(r"^[a-z_][a-z0-9_]{0,40}$")
 
@@ -64,3 +66,33 @@ class DocumentRepository:
     async def get(self, external_id: str) -> dict[str, Any] | None:
         doc = await self.session.scalar(select(Document).where(Document.external_id == external_id))
         return to_dict(doc) if doc else None
+
+    async def get_pages(
+        self, external_id: str, page_no: int | None = None
+    ) -> tuple[bool, list[dict[str, Any]] | dict[str, Any] | None]:
+        doc = await self.session.scalar(select(Document).where(Document.external_id == external_id))
+        if not doc:
+            return False, None
+
+        stmt = select(Page).where(Page.document_id == doc.id).order_by(Page.page_no)
+        if page_no is not None:
+            stmt = stmt.where(Page.page_no == page_no)
+            page = await self.session.scalar(stmt)
+            if not page:
+                return True, None
+            return True, {
+                "document_id": external_id,
+                "page_no": page.page_no,
+                "text": page.text,
+                "headings": page.headings,
+            }
+
+        pages = await self.session.scalars(stmt)
+        return True, [
+            {
+                "page_no": p.page_no,
+                "text": p.text,
+                "headings": p.headings,
+            }
+            for p in pages
+        ]

@@ -67,3 +67,25 @@ async def get_document(
             instance=request.url.path,
         )
     return doc
+
+
+@router.get("/{doc_id}/pages")
+async def get_document_pages(
+    doc_id: str,
+    request: Request,
+    repo: Annotated[DocumentRepository, Depends(get_repo)],
+    page_no: int | None = Query(default=None, ge=1, description="Optional page number"),
+) -> Any:
+    """Retrieve all pages or a specific page of a document."""
+    doc_found, result = await repo.get_pages(doc_id, page_no=page_no)
+    if not doc_found:
+        raise NotFoundProblem(
+            detail=f"No document with id '{doc_id}'.",
+            instance=request.url.path,
+        )
+    if result is None:
+        raise NotFoundProblem(
+            detail=f"Page {page_no} not found for document '{doc_id}'.",
+            instance=request.url.path,
+        )
+    return result

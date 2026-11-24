@@ -1,5 +1,5 @@
 # Shortcuts for Mac/Linux. On Windows, run the same tasks with: uv run poe <task>
-.PHONY: dev test test-integration cov lint format up down logs reset stats manifest
+.PHONY: dev test test-integration cov lint format up down logs reset stats manifest parse parse-retry compare-parsers
 
 dev:
 	uv run poe dev
@@ -24,6 +24,15 @@ stats:
 
 manifest:
 	uv run python scripts/manifest_summary.py
+
+parse:
+	uv run python scripts/parse_corpus.py
+
+parse-retry:
+	uv run python scripts/parse_corpus.py --retry-failed
+
+compare-parsers:
+	uv run python scripts/compare_parsers.py
 
 up:
 	docker compose up --build -d

@@ -23,8 +23,16 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     data_file: Path = Path("data/sample_records.json")
     database_url: str = "postgresql://localhost:5432/kubeguide"
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    db_pool_timeout_seconds: int = 30
     # The commit this image was built from. CI sets it (Dockerfile ARG GIT_SHA); locally "dev".
     git_sha: str = "dev"
+
+    @property
+    def is_production(self) -> bool:
+        """Return True if running in production mode."""
+        return self.app_env == "production"
 
     @field_validator("database_url")
     @classmethod

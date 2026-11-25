@@ -1,9 +1,10 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from kubeguide.api.deps import check_db, get_repo
+from kubeguide.api.deps import check_db, get_gateway, get_repo, get_usage_repo
 from kubeguide.api.main import create_app
 from kubeguide.config import Settings
+from kubeguide.llm.gateway import FakeLLM, LLMGateway
 
 # Tiny fake records: unit tests never touch a real database or your data file.
 SAMPLE = [
@@ -58,6 +59,52 @@ class FakeRepo:
         return True, pages
 
 
+class FakeUsageRepo:
+    """Fake usage repository for testing /v1/usage without database calls."""
+
+    def __init__(self, days_data=None):
+        self.days_data = days_data or [
+            {
+                "day": "2026-11-25",
+                "calls": 5,
+                "successful_calls": 5,
+                "fallback_calls": 1,
+                "tokens_in": 500,
+                "tokens_out": 1200,
+                "cost_inr": 0.45,
+                "p50_latency_ms": 120,
+                "p95_latency_ms": 350,
+            }
+        ]
+
+    async def by_day(self, days=7):
+        return self.days_data
+
+
+@pytest.fixture
+def fake_llm():
+    return FakeLLM(
+        name="gemini",
+        model="gemini-3.8-flash",
+        responses=["To inspect pods, run kubectl get pods -A."],
+    )
+
+
+@pytest.fixture
+def fake_gateway(fake_llm):
+    fallback = FakeLLM(
+        name="groq",
+        model="openai/gpt-oss-20b",
+        responses=["Fallback response from Groq."],
+    )
+    return LLMGateway(primary=fake_llm, fallback=fallback)
+
+
+@pytest.fixture
+def llm(fake_llm):
+    return fake_llm
+
+
 @pytest.fixture
 def settings():
     # _env_file=None: ignore your local .env so tests behave the same everywhere
@@ -74,9 +121,11 @@ def db_state():
 
 
 @pytest.fixture
-def client(settings, db_state):
+def client(settings, db_state, fake_gateway):
     app = create_app(settings)
     app.dependency_overrides[get_repo] = lambda: FakeRepo(SAMPLE)
     app.dependency_overrides[check_db] = lambda: db_state["up"]
+    app.dependency_overrides[get_gateway] = lambda: fake_gateway
+    app.dependency_overrides[get_usage_repo] = lambda: FakeUsageRepo()
     with TestClient(app) as c:
         yield c

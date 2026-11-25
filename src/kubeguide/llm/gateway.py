@@ -544,8 +544,6 @@ class LLMGateway:
             try:
                 async for chunk in self.primary.stream(messages):
                     first_yielded = True
-                    chunk.fallback_used = False
-                    yield chunk
                     if chunk.done:
                         self.primary_breaker.record_success()
                         await self._record(
@@ -566,7 +564,11 @@ class LLMGateway:
                                 "fallback_used": False,
                             }
                         )
+                        chunk.fallback_used = False
+                        yield chunk
                         return
+                    chunk.fallback_used = False
+                    yield chunk
             except Exception as exc:
                 elapsed_ms = int((time.perf_counter() - t0) * 1000)
                 self.primary_breaker.record_failure()
@@ -600,8 +602,6 @@ class LLMGateway:
             t0 = time.perf_counter()
             try:
                 async for chunk in self.fallback.stream(messages):
-                    chunk.fallback_used = True
-                    yield chunk
                     if chunk.done:
                         self.fallback_breaker.record_success()
                         await self._record(
@@ -622,7 +622,11 @@ class LLMGateway:
                                 "fallback_used": True,
                             }
                         )
+                        chunk.fallback_used = True
+                        yield chunk
                         return
+                    chunk.fallback_used = True
+                    yield chunk
             except Exception as exc:
                 elapsed_ms = int((time.perf_counter() - t0) * 1000)
                 self.fallback_breaker.record_failure()

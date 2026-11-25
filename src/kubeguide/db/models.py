@@ -48,7 +48,9 @@ class Document(Base):
     metadata_: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSONB, server_default=text("'{}'::jsonb")
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -101,7 +103,9 @@ class ParseFailure(Base):
     reason: Mapped[str] = mapped_column(String(40), index=True)  # no_text_layer, corrupt, ...
     detail: Mapped[str] = mapped_column(Text, server_default="")
     attempts: Mapped[int] = mapped_column(server_default="1")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -125,4 +129,6 @@ class LlmCall(Base):
     latency_ms: Mapped[int] = mapped_column(server_default="0")
     cost_inr: Mapped[float] = mapped_column(Numeric(12, 6), server_default="0.0")
     fallback_used: Mapped[bool] = mapped_column(server_default="false")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )

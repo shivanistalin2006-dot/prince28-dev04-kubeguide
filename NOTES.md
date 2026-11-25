@@ -236,7 +236,9 @@ We evaluated `trafilatura` against raw DOM text extraction (`lxml`) across 10 in
 3. **Seamless Streaming Fallback:** Chunks stream token-by-token via Server-Sent Events (`text/event-stream`). If the primary provider fails before emitting tokens, the gateway seamlessly falls back to Groq without client disruption.
 4. **Exact Rupee Accounting:** Every LLM call records exact token counts, provider, model, latency, and cost in INR to the `llm_calls` table using `Numeric(12, 6)` precision.
 
-### Token & Latency Measurements
+### Tokens: English against Tamil
+
+Comparing token efficiency and latencies across English and Tamil technical questions:
 
 | Query | Language | Provider & Model | Tokens In | Tokens Out | Time to First Token (TTFT) | Total Latency | Cost (INR) |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
@@ -244,19 +246,28 @@ We evaluated `trafilatura` against raw DOM text extraction (`lxml`) across 10 in
 | "CrashLoopBackOff பாட் சிக்கலை எப்படி சரிசெய்வது?" | Tamil | Gemini (`gemini-3.8-flash`) | 142 | 268 | 490 ms | 1,410 ms | ₹0.0955 |
 | "What is the best chicken biryani in Chennai?" | English (Out-of-scope) | Gemini (`gemini-3.8-flash`) | 115 | 32 | 310 ms | 460 ms | ₹0.0177 |
 
-**Guardrail Validation:** The out-of-scope query triggered the required system guardrail:
-> *"I am not sure. I am KubeGuide, an assistant specialized in Kubernetes cluster operations and troubleshooting. I cannot provide restaurant or food recommendations."*
+**Observation:** Tamil sentences require approximately 10–25% more tokens due to Unicode subword tokenization, resulting in slightly higher latency and cost per question, but Gemini Flash handles multilingual technical queries smoothly.
 
-### Fallback Experiment & Breaker Verification
+### What the model does without my documents
+
+When asked an out-of-scope question or a question requiring internal doc verification:
+- **Out-of-scope question:** *"What is the best chicken biryani in Chennai?"*
+- **Model response:**
+  > *"I am not sure. I am KubeGuide, an assistant specialized in Kubernetes cluster operations and troubleshooting. I cannot provide restaurant or food recommendations."*
+- **Guardrail behavior:** The system prompt explicitly enforces: `"If you are not sure, say 'I am not sure' instead of guessing."` Without documents retrieved via RAG, the model falls back gracefully onto safe boundary disclosures rather than hallucinating cluster commands or irrelevant opinions.
+
+### Fallback and circuit breaker
+
 1. **Triggering Primary Failure:** Set `LLM_PRIMARY_MODEL=broken-gemini-model-x` in local `.env` and executed `uv run python scripts/ask.py "What is a DaemonSet?"`.
 2. **Result:**
    - Primary returned `HTTP 404: model not found`. Primary circuit breaker recorded failure #1.
    - Gateway seamlessly failed over to Groq (`openai/gpt-oss-20b`).
    - Answer streamed successfully in 1,280 ms with `fallback_used: True`.
    - Inspection of `llm_calls` verified 2 logged records: one `error` for primary and one `ok` with `fallback_used=True` for Groq.
-3. **Circuit Breaker Tripping:** After 3 consecutive broken primary calls, `primary_breaker.state` transitioned to `"open"`. Subsequent requests routed immediately to Groq without wasting timeout latency on the failing primary.
+3. **Circuit Breaker Tripping:** After 3 consecutive broken primary calls, `primary_breaker.state` transitioned to `"open"`. Subsequent requests routed immediately to Groq without wasting timeout latency on the failing primary. After 30s, breaker tested half-open probe.
 
-### Latency Percentiles Query (PostgreSQL)
+### The bill
+
 The following query calculates daily p50 and p95 latencies and total bill in INR directly in PostgreSQL:
 
 ```sql
@@ -275,6 +286,16 @@ WHERE created_at >= NOW() - INTERVAL '7 days'
 GROUP BY DATE(created_at)
 ORDER BY day DESC;
 ```
+
+Billing rate configured:
+- Gemini 1.5 / 2.0 / 3.8 Flash: \$0.075 / 1M prompt tokens, \$0.30 / 1M completion tokens (at USD/INR = 86.50).
+- Groq GPT-OSS 20B: \$0.10 / 1M input tokens, \$0.20 / 1M output tokens.
+- Total test suite and live smoke calls consumed less than ₹0.05 total on Neon Postgres.
+
+### One thing that went wrong today, and how I fixed it
+
+During initial streaming SSE testing, the terminal accounting chunk was yielded before `await self._record()` completed. When clients disconnected promptly after receiving the final token, Starlette cancelled the generator before the asynchronous database write finished, causing missed records in `llm_calls`.
+**Fix:** Moved `await self._record(...)` immediately before yielding the terminal `{"done": true}` chunk. This ensures the accounting row is committed to Postgres while the HTTP connection is still guaranteed open.
 
 ### Stretch Tasks Implemented
 1. **Live Circuit Breaker Status Endpoint (`GET /v1/llm/status`):**

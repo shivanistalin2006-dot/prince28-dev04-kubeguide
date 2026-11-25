@@ -1,5 +1,5 @@
 # Shortcuts for Mac/Linux. On Windows, run the same tasks with: uv run poe <task>
-.PHONY: dev test test-integration cov lint format up down logs reset stats manifest parse parse-retry compare-parsers ask llm-ping
+.PHONY: dev test test-integration cov lint format up down logs reset stats manifest parse parse-retry compare-parsers ask ask-live llm-ping usage
 
 dev:
 	uv run poe dev
@@ -51,3 +51,9 @@ ask:
 
 llm-ping:
 	uv run python scripts/llm_ping.py
+
+ask-live:
+	uv run python scripts/ask.py --url https://kubeguide.onrender.com
+
+usage:
+	curl -s https://kubeguide.onrender.com/v1/usage

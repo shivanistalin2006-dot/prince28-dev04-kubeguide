@@ -16,6 +16,9 @@ A Kubernetes assistant for on-call engineers that explains errors, objects and k
 - **Liveness probe:** `https://kubeguide.onrender.com/health` (returns JSON status, app, env, and git_sha)
 - **Readiness probe:** `https://kubeguide.onrender.com/ready` (verifies live database connectivity)
 - **Documents API:** `https://kubeguide.onrender.com/v1/documents`
+- **Chat API:** `https://kubeguide.onrender.com/v1/chat` (streaming SSE and JSON responses)
+- **LLM Status:** `https://kubeguide.onrender.com/v1/llm/status` (primary/fallback circuit breaker status)
+- **Usage & Bill:** `https://kubeguide.onrender.com/v1/usage` (daily calls, token usage, and INR cost)
 
 ### Documentation & Guides
 - [Architecture & Design](docs/ARCHITECTURE.md): System components, dataflow, and reliability model.

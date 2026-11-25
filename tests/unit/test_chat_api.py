@@ -63,6 +63,31 @@ def test_chat_with_multi_turn_history(client: TestClient):
     assert resp.json()["response"] != ""
 
 
+def test_chat_request_with_message_field(client: TestClient):
+    resp = client.post(
+        "/v1/chat",
+        json={"message": "What is an Ingress?", "stream": False},
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "response" in data
+    assert "answer" in data
+    assert data["answer"] == data["response"]
+    assert "tokens" in data
+    assert data["tokens"]["in"] > 0
+    assert data["is_fallback"] is False
+
+
+def test_chat_streaming_chunks_have_chunk_alias(client: TestClient):
+    resp = client.post(
+        "/v1/chat",
+        json={"message": "Explain Pod", "stream": True},
+    )
+    assert resp.status_code == 200
+    assert '"chunk":' in resp.text
+    assert '"is_fallback":' in resp.text
+
+
 def test_chat_validation_error(client: TestClient):
     resp = client.post("/v1/chat", json={"prompt": ""})
     assert resp.status_code == 422

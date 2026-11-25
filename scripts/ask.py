@@ -18,7 +18,7 @@ import httpx
 
 def ask(prompt: str, base_url: str = "http://localhost:8000", stream: bool = True) -> int:
     url = f"{base_url.rstrip('/')}/v1/chat"
-    payload = {"prompt": prompt, "stream": stream}
+    payload = {"prompt": prompt, "message": prompt, "stream": stream}
 
     print(f"\nAsking '{prompt}' at {url} (stream={stream})...\n" + "-" * 60)
     t0 = time.perf_counter()
@@ -101,7 +101,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Ask questions to KubeGuide /v1/chat")
     default_q = "How do I troubleshoot a CrashLoopBackOff pod?"
     parser.add_argument("prompt", nargs="?", default=default_q)
-    parser.add_argument("--base-url", default="http://localhost:8000", help="Base API URL")
+    parser.add_argument(
+        "--base-url",
+        "--url",
+        dest="base_url",
+        default="http://localhost:8000",
+        help="Base API URL (e.g. https://kubeguide.onrender.com)",
+    )
     parser.add_argument("--json", action="store_true", help="Request non-streaming JSON response")
     args = parser.parse_args()
 

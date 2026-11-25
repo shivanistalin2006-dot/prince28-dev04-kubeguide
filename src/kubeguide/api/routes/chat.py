@@ -5,11 +5,11 @@ from __future__ import annotations
 import json
 import uuid
 from collections.abc import AsyncIterator
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from kubeguide.api.deps import get_gateway, get_usage_repo
 from kubeguide.db.llm_calls import LlmUsageRepository
@@ -24,12 +24,26 @@ class ChatMessage(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    prompt: str = Field(..., min_length=1, description="User prompt or query")
+    message: str | None = Field(
+        None, min_length=1, max_length=4000, description="User message or query"
+    )
+    prompt: str | None = Field(
+        None, min_length=1, max_length=4000, description="User prompt or query alias"
+    )
     stream: bool = Field(True, description="Whether to stream response chunks via SSE")
     history: list[ChatMessage] = Field(
         default_factory=list, description="Optional multi-turn conversation history"
     )
     purpose: str = Field("chat", description="Purpose tag for audit logging")
+
+    @model_validator(mode="after")
+    def populate_message_and_prompt(self) -> Self:
+        text = self.message or self.prompt
+        if not text:
+            raise ValueError("Either 'message' or 'prompt' must be provided.")
+        self.message = text
+        self.prompt = text
+        return self
 
 
 class ChatResponse(BaseModel):

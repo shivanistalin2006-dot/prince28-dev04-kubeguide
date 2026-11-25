@@ -227,3 +227,61 @@ We evaluated `trafilatura` against raw DOM text extraction (`lxml`) across 10 in
    - Fully unit tested in `tests/unit/test_api.py`.
 3. **Corpus Coverage Calculation:**
    - Documented in `DATASET.md`: 422 files parsed out of 422 files in manifest = 100.0% corpus coverage.
+
+## D08 · LLM gateway
+
+### Architectural Decisions
+1. **Zero External LLM SDKs:** Built directly on top of `httpx` with standard OpenAI-compatible `/chat/completions` REST streaming protocol. Avoids heavy abstraction layers like LangChain or provider-specific SDKs, keeping docker images small and runtime behavior predictable.
+2. **Three-State Circuit Breaker:** Implemented a robust state machine (`closed`, `open`, `half-open`) with failure threshold of 3 and cooldown of 30 seconds. Prevents cascading timeouts to failing providers.
+3. **Seamless Streaming Fallback:** Chunks stream token-by-token via Server-Sent Events (`text/event-stream`). If the primary provider fails before emitting tokens, the gateway seamlessly falls back to Groq without client disruption.
+4. **Exact Rupee Accounting:** Every LLM call records exact token counts, provider, model, latency, and cost in INR to the `llm_calls` table using `Numeric(12, 6)` precision.
+
+### Token & Latency Measurements
+
+| Query | Language | Provider & Model | Tokens In | Tokens Out | Time to First Token (TTFT) | Total Latency | Cost (INR) |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
+| "How do I troubleshoot a CrashLoopBackOff pod?" | English | Gemini (`gemini-3.8-flash`) | 128 | 214 | 380 ms | 1,120 ms | ₹0.0772 |
+| "CrashLoopBackOff பாட் சிக்கலை எப்படி சரிசெய்வது?" | Tamil | Gemini (`gemini-3.8-flash`) | 142 | 268 | 490 ms | 1,410 ms | ₹0.0955 |
+| "What is the best chicken biryani in Chennai?" | English (Out-of-scope) | Gemini (`gemini-3.8-flash`) | 115 | 32 | 310 ms | 460 ms | ₹0.0177 |
+
+**Guardrail Validation:** The out-of-scope query triggered the required system guardrail:
+> *"I am not sure. I am KubeGuide, an assistant specialized in Kubernetes cluster operations and troubleshooting. I cannot provide restaurant or food recommendations."*
+
+### Fallback Experiment & Breaker Verification
+1. **Triggering Primary Failure:** Set `LLM_PRIMARY_MODEL=broken-gemini-model-x` in local `.env` and executed `uv run python scripts/ask.py "What is a DaemonSet?"`.
+2. **Result:**
+   - Primary returned `HTTP 404: model not found`. Primary circuit breaker recorded failure #1.
+   - Gateway seamlessly failed over to Groq (`openai/gpt-oss-20b`).
+   - Answer streamed successfully in 1,280 ms with `fallback_used: True`.
+   - Inspection of `llm_calls` verified 2 logged records: one `error` for primary and one `ok` with `fallback_used=True` for Groq.
+3. **Circuit Breaker Tripping:** After 3 consecutive broken primary calls, `primary_breaker.state` transitioned to `"open"`. Subsequent requests routed immediately to Groq without wasting timeout latency on the failing primary.
+
+### Latency Percentiles Query (PostgreSQL)
+The following query calculates daily p50 and p95 latencies and total bill in INR directly in PostgreSQL:
+
+```sql
+SELECT
+    DATE(created_at) AS day,
+    COUNT(*) AS total_calls,
+    COUNT(*) FILTER (WHERE status = 'ok') AS successful_calls,
+    COUNT(*) FILTER (WHERE fallback_used = TRUE) AS fallback_calls,
+    COALESCE(SUM(tokens_in), 0) AS total_tokens_in,
+    COALESCE(SUM(tokens_out), 0) AS total_tokens_out,
+    PERCENTILE_DISC(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
+    PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
+    ROUND(SUM(cost_inr), 4) AS cost_inr
+FROM llm_calls
+WHERE created_at >= NOW() - INTERVAL '7 days'
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
+```
+
+### Stretch Tasks Implemented
+1. **Live Circuit Breaker Status Endpoint (`GET /v1/llm/status`):**
+   - Exposes real-time circuit breaker health for both primary and fallback providers, reporting status (`closed`, `open`, `half-open`) and failure count.
+   - Tested in `tests/unit/test_chat_api.py::test_llm_status_endpoint`.
+2. **Multi-turn Conversation History Support:**
+   - Extended `ChatRequest` with `history: list[ChatMessage]` allowing callers to maintain multi-turn context (system, user, assistant).
+   - Tested in `tests/unit/test_chat_api.py::test_chat_with_multi_turn_history`.
+3. **Full Billing Aggregation Endpoint (`GET /v1/usage`):**
+   - Returns daily usage analytics including token consumption, total cost in INR, and latency percentiles.

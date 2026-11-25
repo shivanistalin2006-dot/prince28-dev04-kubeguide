@@ -1,5 +1,5 @@
 # Shortcuts for Mac/Linux. On Windows, run the same tasks with: uv run poe <task>
-.PHONY: dev test test-integration cov lint format up down logs reset stats manifest parse parse-retry compare-parsers
+.PHONY: dev test test-integration cov lint format up down logs reset stats manifest parse parse-retry compare-parsers ask llm-ping
 
 dev:
 	uv run poe dev
@@ -45,3 +45,9 @@ logs:
 
 reset:
 	docker compose down -v
+
+ask:
+	uv run python scripts/ask.py
+
+llm-ping:
+	uv run python scripts/llm_ping.py

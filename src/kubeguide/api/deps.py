@@ -8,7 +8,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kubeguide.config import Settings, get_settings
+from kubeguide.db.llm_calls import LlmUsageRepository
 from kubeguide.db.repository import DocumentRepository
+from kubeguide.llm.gateway import LLMGateway, build_gateway
 
 
 def get_app_settings(request: Request) -> Settings:
@@ -30,6 +32,26 @@ def get_repo(
 ) -> DocumentRepository:
     """Dependency providing a DocumentRepository instance."""
     return DocumentRepository(session)
+
+
+def get_usage_repo(
+    session: Annotated[AsyncSession, Depends(get_db)],
+) -> LlmUsageRepository:
+    """Dependency providing an LlmUsageRepository instance."""
+    return LlmUsageRepository(session)
+
+
+def get_gateway(request: Request) -> LLMGateway:
+    """Dependency providing an LLMGateway instance."""
+    gateway = getattr(request.app.state, "gateway", None)
+    if gateway is None:
+        settings = get_app_settings(request)
+        gateway = build_gateway(settings)
+    return gateway
+
+
+GatewayDep = Annotated[LLMGateway, Depends(get_gateway)]
+UsageDep = Annotated[LlmUsageRepository, Depends(get_usage_repo)]
 
 
 async def check_db(request: Request) -> bool:

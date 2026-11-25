@@ -48,12 +48,15 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+    answer: str | None = None
     tokens_in: int
     tokens_out: int
+    tokens: dict[str, int] | None = None
     latency_ms: int
     provider: str
     model: str
     fallback_used: bool
+    is_fallback: bool | None = None
 
 
 class DailyUsage(BaseModel):
@@ -109,32 +112,38 @@ async def chat_endpoint(
 
         async def sse_event_stream() -> AsyncIterator[str]:
             if first_chunk.delta:
-                yield f"data: {json.dumps({'delta': first_chunk.delta, 'done': False})}\n\n"
+                chunk_data = {"delta": first_chunk.delta, "chunk": first_chunk.delta, "done": False}
+                yield f"data: {json.dumps(chunk_data)}\n\n"
             if first_chunk.done:
                 payload = {
                     "done": True,
                     "tokens_in": first_chunk.tokens_in,
                     "tokens_out": first_chunk.tokens_out,
+                    "tokens": {"in": first_chunk.tokens_in, "out": first_chunk.tokens_out},
                     "latency_ms": first_chunk.latency_ms,
                     "provider": first_chunk.provider,
                     "model": first_chunk.model,
                     "fallback_used": first_chunk.fallback_used,
+                    "is_fallback": first_chunk.fallback_used,
                 }
                 yield f"data: {json.dumps(payload)}\n\n"
                 return
 
             async for chunk in stream_gen:
                 if chunk.delta:
-                    yield f"data: {json.dumps({'delta': chunk.delta, 'done': False})}\n\n"
+                    chunk_data = {"delta": chunk.delta, "chunk": chunk.delta, "done": False}
+                    yield f"data: {json.dumps(chunk_data)}\n\n"
                 if chunk.done:
                     payload = {
                         "done": True,
                         "tokens_in": chunk.tokens_in,
                         "tokens_out": chunk.tokens_out,
+                        "tokens": {"in": chunk.tokens_in, "out": chunk.tokens_out},
                         "latency_ms": chunk.latency_ms,
                         "provider": chunk.provider,
                         "model": chunk.model,
                         "fallback_used": chunk.fallback_used,
+                        "is_fallback": chunk.fallback_used,
                     }
                     yield f"data: {json.dumps(payload)}\n\n"
 
@@ -148,12 +157,15 @@ async def chat_endpoint(
         )
         return ChatResponse(
             response=res.content,
+            answer=res.content,
             tokens_in=res.tokens_in,
             tokens_out=res.tokens_out,
+            tokens={"in": res.tokens_in, "out": res.tokens_out},
             latency_ms=res.latency_ms,
             provider=res.provider,
             model=res.model,
             fallback_used=res.fallback_used,
+            is_fallback=res.fallback_used,
         )
     except AllProvidersFailedError as exc:
         raise HTTPException(

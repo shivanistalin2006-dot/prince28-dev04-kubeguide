@@ -2,15 +2,19 @@
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
 
 from kubeguide.api.errors import register_error_handlers
 from kubeguide.api.middleware import register_middleware
-from kubeguide.api.routes import documents, health
+from kubeguide.api.routes import chat, documents, health
 from kubeguide.config import Settings, get_settings
+from kubeguide.db.llm_calls import record_llm_call
 from kubeguide.db.session import make_engine, make_sessionmaker
+from kubeguide.llm.gateway import build_gateway
 from kubeguide.logging_setup import setup_logging
 
 
@@ -28,6 +32,25 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         session_factory = make_sessionmaker(engine)
         app.state.engine = engine
         app.state.session_factory = session_factory
+
+        # Load system prompt
+        prompts_dir = Path(settings.prompts_dir)
+        prompt_file = prompts_dir / "chat_system_v1.md"
+        if prompt_file.exists():
+            app.state.system_prompt = prompt_file.read_text(encoding="utf-8")
+        else:
+            app.state.system_prompt = (
+                "You are KubeGuide, an assistant for Kubernetes SREs. "
+                "If you are not sure, say 'I am not sure' instead of guessing."
+            )
+
+        # Configure LLM gateway with DB call recorder
+        async def recorder(data: dict[str, Any]) -> None:
+            async with session_factory() as session:
+                await record_llm_call(session, data)
+
+        app.state.gateway = build_gateway(settings, recorder=recorder)
+
         yield
         await engine.dispose()
 
@@ -45,6 +68,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(documents.router)
+    app.include_router(chat.router)
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:

@@ -86,7 +86,7 @@ def fake_llm():
     return FakeLLM(
         name="gemini",
         model="gemini-3.8-flash",
-        responses=["To inspect pods, run kubectl get pods -A."],
+        responses=["docs", "To inspect pods, run kubectl get pods -A."],
     )
 
 

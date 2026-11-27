@@ -13,9 +13,19 @@ from pydantic import BaseModel, Field, model_validator
 
 from kubeguide.api.deps import get_gateway, get_usage_repo
 from kubeguide.db.llm_calls import LlmUsageRepository
-from kubeguide.llm.gateway import AllProvidersFailedError, LLMGateway
+from kubeguide.llm.classify import classify
+from kubeguide.llm.gateway import AllProvidersFailedError, LLMGateway, ProviderResult
 
 router = APIRouter(prefix="/v1", tags=["chat"])
+
+PERSONAL_RESPONSE = (
+    "I am not sure. KubeGuide only answers from static Kubernetes documentation "
+    "and cannot access live cluster health, private credentials, or internal runtime data."
+)
+OFF_TOPIC_RESPONSE = (
+    "I am KubeGuide, a Kubernetes documentation assistant for on-call engineers. "
+    "This question is outside my Kubernetes scope."
+)
 
 
 class ChatMessage(BaseModel):
@@ -71,6 +81,41 @@ class DailyUsage(BaseModel):
     p95_latency_ms: int | None = None
 
 
+def _fixed_chat_response(text: str, stream: bool, cls_res: ProviderResult) -> Any:
+    """Return a fixed guardrail response (JSON or SSE) without calling the answer LLM."""
+    if stream:
+
+        async def fixed_stream() -> AsyncIterator[str]:
+            yield f"data: {json.dumps({'delta': text, 'chunk': text, 'done': False})}\n\n"
+            payload = {
+                "done": True,
+                "tokens_in": cls_res.tokens_in,
+                "tokens_out": cls_res.tokens_out,
+                "tokens": {"in": cls_res.tokens_in, "out": cls_res.tokens_out},
+                "latency_ms": cls_res.latency_ms,
+                "provider": cls_res.provider,
+                "model": cls_res.model,
+                "fallback_used": cls_res.fallback_used,
+                "is_fallback": cls_res.fallback_used,
+            }
+            yield f"data: {json.dumps(payload)}\n\n"
+
+        return StreamingResponse(fixed_stream(), media_type="text/event-stream")
+
+    return ChatResponse(
+        response=text,
+        answer=text,
+        tokens_in=cls_res.tokens_in,
+        tokens_out=cls_res.tokens_out,
+        tokens={"in": cls_res.tokens_in, "out": cls_res.tokens_out},
+        latency_ms=cls_res.latency_ms,
+        provider=cls_res.provider,
+        model=cls_res.model,
+        fallback_used=cls_res.fallback_used,
+        is_fallback=cls_res.fallback_used,
+    )
+
+
 @router.post("/chat", summary="Chat with KubeGuide assistant")
 async def chat_endpoint(
     req: ChatRequest,
@@ -79,6 +124,24 @@ async def chat_endpoint(
 ) -> Any:
     """Stream or return an LLM answer using resilient multi-provider gateway."""
     request_id = getattr(request.state, "request_id", None) or uuid.uuid4().hex
+
+    classify_prompt = getattr(request.app.state, "classify_prompt", None)
+    classify_version = getattr(request.app.state, "classify_version", None)
+    if classify_prompt and classify_version is not None and req.purpose == "chat":
+        try:
+            label, cls_res = await classify(
+                gateway, classify_prompt, classify_version, req.prompt or ""
+            )
+        except AllProvidersFailedError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"All LLM providers are currently unavailable: {exc}",
+            ) from exc
+        if label == "personal":
+            return _fixed_chat_response(PERSONAL_RESPONSE, req.stream, cls_res)
+        if label == "off_topic":
+            return _fixed_chat_response(OFF_TOPIC_RESPONSE, req.stream, cls_res)
+
     system_prompt = getattr(
         request.app.state,
         "system_prompt",

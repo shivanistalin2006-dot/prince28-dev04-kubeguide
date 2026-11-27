@@ -15,6 +15,8 @@ from kubeguide.config import Settings, get_settings
 from kubeguide.db.llm_calls import record_llm_call
 from kubeguide.db.session import make_engine, make_sessionmaker
 from kubeguide.llm.gateway import build_gateway
+from kubeguide.llm.prompts import load as load_prompt
+from kubeguide.llm.prompts import versions as prompt_versions
 from kubeguide.logging_setup import setup_logging
 
 
@@ -43,6 +45,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 "You are KubeGuide, an assistant for Kubernetes SREs. "
                 "If you are not sure, say 'I am not sure' instead of guessing."
             )
+
+        # Load newest question-classification prompt for /v1/chat routing (if present)
+        if prompt_versions(prompts_dir, "classify"):
+            cls_ver, cls_prompt = load_prompt(prompts_dir, "classify")
+            app.state.classify_version = cls_ver
+            app.state.classify_prompt = cls_prompt
+        else:
+            app.state.classify_version = None
+            app.state.classify_prompt = None
 
         # Configure LLM gateway with DB call recorder
         async def recorder(data: dict[str, Any]) -> None:

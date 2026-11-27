@@ -137,3 +137,43 @@ def test_llm_status_endpoint(client: TestClient):
     assert "primary" in data
     assert "fallback" in data
     assert data["primary"]["circuit_breaker"] in ("closed", "open", "half-open")
+
+
+def test_chat_routes_personal_without_second_llm_call(settings):
+    primary = FakeLLM(
+        name="gemini",
+        model="gemini-3.8-flash",
+        responses=["personal", "SHOULD NOT BE CALLED"],
+    )
+    gateway = LLMGateway(primary=primary, fallback=FakeLLM(name="groq"))
+    app = create_app(settings)
+    app.dependency_overrides[get_gateway] = lambda: gateway
+
+    with TestClient(app) as test_client:
+        resp = test_client.post(
+            "/v1/chat",
+            json={"message": "Is our production cluster healthy right now?", "stream": False},
+        )
+    assert resp.status_code == 200
+    assert "cannot access live cluster health" in resp.json()["answer"]
+    assert primary.call_count == 1
+
+
+def test_chat_routes_off_topic_without_second_llm_call(settings):
+    primary = FakeLLM(
+        name="gemini",
+        model="gemini-3.8-flash",
+        responses=["off_topic", "SHOULD NOT BE CALLED"],
+    )
+    gateway = LLMGateway(primary=primary, fallback=FakeLLM(name="groq"))
+    app = create_app(settings)
+    app.dependency_overrides[get_gateway] = lambda: gateway
+
+    with TestClient(app) as test_client:
+        resp = test_client.post(
+            "/v1/chat",
+            json={"message": "Who won the 2011 cricket world cup?", "stream": True},
+        )
+    assert resp.status_code == 200
+    assert "outside my Kubernetes scope" in resp.text
+    assert primary.call_count == 1

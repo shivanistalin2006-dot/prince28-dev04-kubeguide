@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+import uuid
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -77,6 +78,12 @@ class ProviderResult:
     model: str
     provider: str
     fallback_used: bool = False
+    cost_inr: float = 0.0
+
+    @property
+    def text(self) -> str:
+        """Alias for `content`."""
+        return self.content
 
 
 @dataclass
@@ -174,6 +181,9 @@ class OpenAICompatProvider:
         self,
         messages: list[dict[str, str]],
         model: str | None = None,
+        *,
+        temperature: float = 0.2,
+        response_format: dict[str, Any] | None = None,
     ) -> ProviderResult:
         if not self.api_key:
             raise ProviderError(
@@ -182,11 +192,13 @@ class OpenAICompatProvider:
 
         active_model = model or self.default_model
         url = f"{self.base_url}/chat/completions"
-        payload = {
+        payload: dict[str, Any] = {
             "model": active_model,
             "messages": messages,
-            "temperature": 0.2,
+            "temperature": temperature,
         }
+        if response_format is not None:
+            payload["response_format"] = response_format
 
         t0 = time.perf_counter()
         try:
@@ -198,9 +210,9 @@ class OpenAICompatProvider:
                     raise self._classify_error(resp.status_code, resp.text)
 
                 data = resp.json()
-                choice = data.get("choices", [{}])[0]
-                content = choice.get("message", {}).get("content", "")
-                usage = data.get("usage", {})
+                choice = (data.get("choices") or [{}])[0]
+                content = (choice.get("message") or {}).get("content") or ""
+                usage = data.get("usage") or {}
                 tokens_in = usage.get("prompt_tokens") or max(
                     1, sum(len(m.get("content", "")) for m in messages) // 4
                 )
@@ -332,10 +344,20 @@ class FakeLLM:
         self,
         messages: list[dict[str, str]],
         model: str | None = None,
+        *,
+        temperature: float = 0.2,
+        response_format: dict[str, Any] | None = None,
     ) -> ProviderResult:
         self.call_count += 1
         active_model = model or self.default_model
-        self.calls.append({"messages": messages, "model": active_model})
+        self.calls.append(
+            {
+                "messages": messages,
+                "model": active_model,
+                "temperature": temperature,
+                "response_format": response_format,
+            }
+        )
 
         if self.errors:
             err = self.errors.pop(0)
@@ -417,21 +439,28 @@ class LLMGateway:
     async def generate(
         self,
         messages: list[dict[str, str]],
-        request_id: str,
+        request_id: str | None = None,
         purpose: str = "chat",
         prompt_version: str = "v1",
+        *,
+        temperature: float = 0.2,
+        response_format: dict[str, Any] | None = None,
     ) -> ProviderResult:
+        req_id = request_id or uuid.uuid4().hex[:16]
         errors: list[str] = []
 
         # 1. Try Primary
         if self.primary_breaker.can_attempt():
             t0 = time.perf_counter()
             try:
-                res = await self.primary.generate(messages)
+                res = await self.primary.generate(
+                    messages, temperature=temperature, response_format=response_format
+                )
                 self.primary_breaker.record_success()
+                res.cost_inr = cost_inr(res.model, res.tokens_in, res.tokens_out, self.usd_inr)
                 await self._record(
                     {
-                        "request_id": request_id,
+                        "request_id": req_id,
                         "provider": res.provider,
                         "model": res.model,
                         "purpose": purpose,
@@ -441,9 +470,7 @@ class LLMGateway:
                         "tokens_in": res.tokens_in,
                         "tokens_out": res.tokens_out,
                         "latency_ms": res.latency_ms,
-                        "cost_inr": cost_inr(
-                            res.model, res.tokens_in, res.tokens_out, self.usd_inr
-                        ),
+                        "cost_inr": res.cost_inr,
                         "fallback_used": False,
                     }
                 )
@@ -457,7 +484,7 @@ class LLMGateway:
                 logger.warning("Primary LLM %s failed: %s", self.primary.name, err_msg)
                 await self._record(
                     {
-                        "request_id": request_id,
+                        "request_id": req_id,
                         "provider": self.primary.name,
                         "model": getattr(self.primary, "default_model", "unknown"),
                         "purpose": purpose,
@@ -478,11 +505,14 @@ class LLMGateway:
         if self.fallback_breaker.can_attempt():
             t0 = time.perf_counter()
             try:
-                res = await self.fallback.generate(messages)
+                res = await self.fallback.generate(
+                    messages, temperature=temperature, response_format=response_format
+                )
                 self.fallback_breaker.record_success()
+                res.cost_inr = cost_inr(res.model, res.tokens_in, res.tokens_out, self.usd_inr)
                 await self._record(
                     {
-                        "request_id": request_id,
+                        "request_id": req_id,
                         "provider": res.provider,
                         "model": res.model,
                         "purpose": purpose,
@@ -492,9 +522,7 @@ class LLMGateway:
                         "tokens_in": res.tokens_in,
                         "tokens_out": res.tokens_out,
                         "latency_ms": res.latency_ms,
-                        "cost_inr": cost_inr(
-                            res.model, res.tokens_in, res.tokens_out, self.usd_inr
-                        ),
+                        "cost_inr": res.cost_inr,
                         "fallback_used": True,
                     }
                 )
@@ -508,7 +536,7 @@ class LLMGateway:
                 logger.error("Fallback LLM %s failed: %s", self.fallback.name, err_msg)
                 await self._record(
                     {
-                        "request_id": request_id,
+                        "request_id": req_id,
                         "provider": self.fallback.name,
                         "model": getattr(self.fallback, "default_model", "unknown"),
                         "purpose": purpose,

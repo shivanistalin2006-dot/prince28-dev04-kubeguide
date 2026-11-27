@@ -203,3 +203,65 @@ def test_openai_compat_provider_missing_key():
 
         asyncio.run(provider.generate([{"role": "user", "content": "hi"}]))
     assert "not configured" in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_gateway_passes_response_format_and_temperature():
+    primary = FakeLLM(name="gemini", model="gemini-3.8-flash", responses=['{"ok": true}'])
+    fallback = FakeLLM(name="groq")
+    gateway = LLMGateway(primary=primary, fallback=fallback)
+    schema_fmt = {
+        "type": "json_schema",
+        "json_schema": {"name": "TestSchema", "schema": {"type": "object"}},
+    }
+
+    res = await gateway.generate(
+        [{"role": "user", "content": "extract"}],
+        temperature=0.0,
+        response_format=schema_fmt,
+    )
+    assert res.text == '{"ok": true}'
+    assert primary.calls[0]["temperature"] == 0.0
+    assert primary.calls[0]["response_format"] == schema_fmt
+
+
+@pytest.mark.asyncio
+async def test_openai_compat_provider_sends_response_format_in_payload():
+    import httpx
+
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        import json
+
+        captured["body"] = json.loads(request.content.decode("utf-8"))
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": '{"doc_kind": "guide"}'}}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+            },
+        )
+
+    transport = httpx.MockTransport(handler)
+    provider = OpenAICompatProvider("gemini", "https://example.com", "fake-key", "gemini-3.8-flash")
+    schema_fmt = {"type": "json_object"}
+
+    orig_client = httpx.AsyncClient
+
+    def mock_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return orig_client(*args, **kwargs)
+
+    import unittest.mock as mock
+
+    with mock.patch("httpx.AsyncClient", side_effect=mock_client):
+        res = await provider.generate(
+            [{"role": "user", "content": "test"}],
+            temperature=0.0,
+            response_format=schema_fmt,
+        )
+
+    assert res.content == '{"doc_kind": "guide"}'
+    assert captured["body"]["temperature"] == 0.0
+    assert captured["body"]["response_format"] == schema_fmt

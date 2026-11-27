@@ -387,3 +387,52 @@ During the 50-document extraction batch on Groq (`openai/gpt-oss-20b`), sending 
 - [x] Milestone 7: `/v1/documents` filtering verified against Neon (`doc_kind=concept`, `language=en`, `object_kinds=pod`)
 - [x] Stretch 1 (`--schema` HTTP 400 documented) & Stretch 2 (`/v1/chat` routing + `FakeLLM` tests)
 - [ ] Manual actions: Shivani & classmate review of `eval/prompt_testset.jsonl`, Neon SQL check, 2-doc truth verification, and PR approval
+
+---
+
+## D10 · Queue and worker
+
+### Architecture & Implementation
+- **Queue & worker stack:** Added `arq==0.28.0` (`redis==5.3.1`, `hiredis==3.5.0`) with `src/kubeguide/workers/queue.py` (`JobQueue` — only module talking to Redis), `src/kubeguide/workers/ingest.py` (`plan`, `raw_url`, `sha256_of`, `Pace`, `get_file`, `process`, `ingest_document`), and `src/kubeguide/workers/main.py` (`WorkerSettings`, `requeue_unfinished`, `create_embedded_worker` for `WORKER_IN_API=true`).
+- **Database schema & migration:** Added `IngestJob` (`ingest_jobs`) and `IngestItem` (`ingest_items`) in `src/kubeguide/db/models.py` via Alembic migration `00c3e7ef1794_add_ingest_jobs_and_ingest_items.py`, managed by `IngestRepository` in `src/kubeguide/db/ingest_jobs.py`.
+- **API & CLI:** Added `POST /v1/ingest` (`X-Admin-Token` required, HTTP `202` accepted or `200` when nothing to do, `503` when Redis is down), `GET /v1/ingest/{job_id}`, and `GET /v1/ingest/dead-letter` in `src/kubeguide/api/routes/ingest.py`, plus `scripts/ingest.py` (CLI watcher) and `scripts/ingest_report.py` (`docs/INGEST_REPORT.md` generator).
+- **Compose:** Added the `worker` service (`arq kubeguide.workers.main.WorkerSettings`, `./data/raw:/app/data/raw:ro`) and `REDIS_URL=redis://redis:6379` to `docker-compose.yml`.
+
+### Ingestion Runs & Crash Recovery Evidence
+- **Phase 6 — 10-document run (partial completion, NOT fully successful):**
+  - Job `096a6a6578d44f608afd0644f9b88d7e`: `10` queued -> **`4` done (`16` pages), `6` failed** (`attempts=3`).
+  - Reason for partial failure: Gemini returned HTTP `429` quota exceeded and Groq (`openai/gpt-oss-20b`) hit its `200,000` TPD free-tier cap after the first 4 items (`gave up after 3 tries: AllProvidersFailedError`).
+- **Phase 7 — 20-document kill & crash recovery test:**
+  - Job `fad69d24d17147b6b4e22945eaf1348b`: `20` queued (`INGEST_RPM=3.5`, `INGEST_CONCURRENCY=2`, fallback `openai/gpt-oss-120b`).
+  - Frozen state when worker `PID 23028` was killed abruptly mid-run: `queued=10, running=2, done=7, skipped=0, failed=1, pages=23` (interrupted items `21` and `22` at `attempts=1`; `arq:in-progress:ingest:22` lock visible in Redis). `/health` remained `200 OK`.
+  - After starting a replacement worker: recovery picked up interrupted items (`attempts=2`) and finished at `461s` with **`17` done (`50` pages), `0` skipped, `3` failed** (`17 + 0 + 3 = 20`, `0` queued, `0` running).
+  - Uniqueness check after Phase 7: `409` documents = `409` distinct `external_id`s (`0` duplicates).
+  - Why nothing was doubled: Every worker item identifies documents by SHA-256 content hash (`Document.sha256`) before parsing or inserting, and tracks item state/attempts in PostgreSQL (`ingest_items`).
+- **Phase 8 — Dead-letter inspection, `--retry-failed`, and Item 38 recovery:**
+  - Job `bf490b08ca8046a8a1177bae21021284` (`9` dead-letter items re-queued): **`6` done (`18` pages), `3` failed**.
+  - The 6 transient quota failures from Phase 6 all completed cleanly (5 initially, plus item `38` `controller.md` recovered in `27.34s` at `attempts=2` after fixing ARQ result retention).
+  - **Three permanent parsing failures remain unresolved:** `tasks/run-application/_index.md`, `tasks/tls/_index.md`, and `tasks/tools/included/_index.md` fail with `parse: empty` (`attempts=1` in `ingest_items`, `3` rows in `parse_failures`) because those Hugo `_index.md` files contain only YAML frontmatter and no body text.
+  - Final queue state across all jobs: **`0` queued, `0` running**.
+
+### Neon Database Audit & Capacity Comparison
+- **Database totals (verified read-only):** `409` documents (`409` distinct `external_id`s, `409` distinct `sha256` hashes), `1,685` pages (`4,092,910` chars / `1,023,227` estimated tokens), `143` successful `extract_v1` records before item 38 recovery (`144` after item 38 completed), `3` `parse_failures` rows, and `10` remaining manifest documents not yet re-ingested (available for live Render verification).
+- **Safety backup:** The `40` newest Neon document rows (`ids 392..431`, `109` pages) removed for Phases 6–7 remain backed up in `neon_backup_40.json` (primary scratch + `%USERPROFILE%\Documents\KubeGuide_Safety_Backup\neon_backup_40.json`, matching SHA-256 `d35c404...`).
+- **Comparison against Monday's estimate (`docs/CAPACITY.md`):**
+  - `docs/CAPACITY.md` estimated `1,505` pages and `1,128,966` tokens.
+  - `docs/INGEST_REPORT.md` measured `1,685` pages (`+180`) and `1,023,227` tokens (`-105,739`) across `409` stored documents — paragraph-boundary splitting creates slightly more pages while stripping HTML navigation/frontmatter lowers total token volume.
+
+### Code Verification (Local)
+- `uv run poe test` (`pytest tests/unit`): **`153` passed** (including unit tests for worker planning, pacing, Git commit raw URL download, ARQ `requeue_unfinished`, `/v1/ingest` auth/202/200/401/403/503, dead-letter, and `WORKER_IN_API`).
+- `uv run poe lint`: `ruff check src tests scripts` and `ruff format --check src tests scripts` passed (`83` files formatted).
+- `python -m compileall -q src scripts tests`: passed (`0` errors).
+- FastAPI OpenAPI routes loaded cleanly (`/v1/ingest`, `/v1/ingest/dead-letter`, `/v1/ingest/{job_id}`).
+- `docker compose config --quiet`: passed (`exit 0`).
+
+### One Thing That Went Wrong, and How It Was Fixed
+- **ARQ stale result key blocked recovery + Windows poll drop:** When item `38` timed out at `61.54s` (`DBAPIError: connection was closed in the middle of operation`), ARQ stored `arq:result:ingest:38` for `3600s` (`keep_result` default), causing `startup()`'s `enqueue_job(..., _job_id="ingest:38")` to silently return `None` and leave item `38` stuck in `queued`. Additionally, `scripts/ingest.py` hit `WinError 10053` on reused keep-alive poll connections.
+- **Fix:** Set `keep_result=0` on `WorkerSettings` and `create_embedded_worker`, added `requeue_unfinished()` in `src/kubeguide/workers/main.py` to delete only an exact stale `arq:result:ingest:{id}` key (when no `in-progress` key exists) before retrying `enqueue_job`, added `pool_recycle=300` + fresh-session error persistence in `workers/ingest.py`, and set `Connection: close` + `TransportError` retry in `scripts/ingest.py`.
+
+### Remaining Deployment Blockers
+- **Local Docker Desktop / WSL2:** `dockerDesktopLinuxEngine` and `wsl` timed out with `Wsl/Service/CreateInstance/CreateVm/ERROR_TIMEOUT` on this Windows machine, preventing local `docker compose up` (native Windows Redis `8.10.3` was used for local Phases 6–8, and local Postgres integration tests await CI or a working local Docker/Postgres service).
+- **LLM free-tier quotas:** Gemini returns HTTP `429` quota exceeded and Groq `openai/gpt-oss-20b` exhausted its `200k` TPD quota earlier (currently using `openai/gpt-oss-120b` in local `.env` at `INGEST_RPM=3.5`).
+- **Pending release steps:** Provision Render Redis + configure `REDIS_URL`, `WORKER_IN_API=true`, and `ADMIN_TOKEN` on Render; commit and push `feat/day-10-queue`; verify CI (including PostgreSQL integration tests); merge PR; verify live `POST /v1/ingest` on `https://kubeguide.onrender.com`; and publish annotated tag `week-2`.

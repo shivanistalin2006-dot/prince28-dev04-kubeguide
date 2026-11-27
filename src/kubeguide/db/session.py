@@ -21,6 +21,7 @@ def make_engine(settings: Settings) -> AsyncEngine:
         echo=False,
         future=True,
         pool_pre_ping=True,
+        pool_recycle=300,
         connect_args=connect_args,
     )
 

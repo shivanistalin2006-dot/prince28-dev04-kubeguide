@@ -1,5 +1,8 @@
 """FastAPI application factory and lifecycle management."""
 
+import asyncio
+import contextlib
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -10,7 +13,7 @@ from fastapi.responses import RedirectResponse
 
 from kubeguide.api.errors import register_error_handlers
 from kubeguide.api.middleware import register_middleware
-from kubeguide.api.routes import chat, documents, health
+from kubeguide.api.routes import chat, documents, health, ingest
 from kubeguide.config import Settings, get_settings
 from kubeguide.db.llm_calls import record_llm_call
 from kubeguide.db.session import make_engine, make_sessionmaker
@@ -18,6 +21,10 @@ from kubeguide.llm.gateway import build_gateway
 from kubeguide.llm.prompts import load as load_prompt
 from kubeguide.llm.prompts import versions as prompt_versions
 from kubeguide.logging_setup import setup_logging
+from kubeguide.workers.main import create_embedded_worker
+from kubeguide.workers.queue import JobQueue
+
+logger = logging.getLogger("kubeguide.api")
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -61,9 +68,36 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 await record_llm_call(session, data)
 
         app.state.gateway = build_gateway(settings, recorder=recorder)
+        queue = JobQueue(settings.redis_url)
+        app.state.queue = queue
 
-        yield
-        await engine.dispose()
+        embedded_worker = None
+        worker_task: asyncio.Task[None] | None = None
+        if settings.worker_in_api:
+            embedded_worker = create_embedded_worker(settings)
+
+            async def _run_embedded() -> None:
+                try:
+                    await embedded_worker.async_run()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("embedded worker stopped: %s", exc)
+
+            worker_task = asyncio.create_task(_run_embedded())
+
+        try:
+            yield
+        finally:
+            if embedded_worker is not None:
+                with contextlib.suppress(Exception):
+                    await embedded_worker.close()
+            if worker_task is not None and not worker_task.done():
+                worker_task.cancel()
+                with contextlib.suppress(asyncio.CancelledError, Exception):
+                    await worker_task
+            await queue.close()
+            await engine.dispose()
 
     app = FastAPI(
         title=settings.app_name,
@@ -80,6 +114,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(documents.router)
     app.include_router(chat.router)
+    app.include_router(ingest.router)
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:

@@ -1,10 +1,21 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
-from kubeguide.api.deps import check_db, get_gateway, get_repo, get_usage_repo
+from kubeguide.api.deps import (
+    check_db,
+    get_gateway,
+    get_ingest_repo,
+    get_manifest,
+    get_queue,
+    get_repo,
+    get_usage_repo,
+)
 from kubeguide.api.main import create_app
 from kubeguide.config import Settings
 from kubeguide.llm.gateway import FakeLLM, LLMGateway
+from kubeguide.workers.queue import QueueUnavailableError
 
 # Tiny fake records: unit tests never touch a real database or your data file.
 SAMPLE = [
@@ -81,6 +92,89 @@ class FakeUsageRepo:
         return self.days_data
 
 
+class FakeIngestRepo:
+    """In-memory replacement for IngestRepository in unit tests."""
+
+    def __init__(self, known=None, dead=None):
+        self.known = set(known or ())
+        self.dead = list(dead or ())
+        self.jobs = {}
+        self.items = {}
+        self._seq = 0
+
+    async def known_ids(self):
+        return set(self.known)
+
+    async def create(self, records):
+        job_id = uuid.uuid4().hex
+        item_ids = []
+        for rec in records:
+            self._seq += 1
+            item_id = self._seq
+            self.items[item_id] = {
+                "id": item_id,
+                "status": "queued",
+                "attempts": 0,
+                "pages": 0,
+                "error": "",
+                "path": rec.get("path", ""),
+                "source": rec.get("source", ""),
+                "title": rec.get("title", ""),
+                "url": rec.get("url", ""),
+                "record": dict(rec),
+            }
+            item_ids.append(item_id)
+        self.jobs[job_id] = {"requested": len(records), "item_ids": item_ids}
+        return job_id, item_ids
+
+    async def delete_job(self, job_id):
+        job = self.jobs.pop(job_id, None)
+        if job:
+            for item_id in job["item_ids"]:
+                self.items.pop(item_id, None)
+
+    async def progress(self, job_id):
+        job = self.jobs.get(job_id)
+        if not job:
+            return None
+        items = [self.items[i] for i in job["item_ids"] if i in self.items]
+        counts = {"queued": 0, "running": 0, "done": 0, "skipped": 0, "failed": 0}
+        pages = 0
+        for item in items:
+            counts[item["status"]] += 1
+            pages += item["pages"]
+        return {
+            "job_id": job_id,
+            "requested": job["requested"],
+            **counts,
+            "pages": pages,
+            "finished": counts["queued"] == 0 and counts["running"] == 0,
+            "items": [{k: v for k, v in it.items() if k != "record"} for it in items],
+        }
+
+    async def dead_letter(self, limit=50):
+        return self.dead[:limit]
+
+    async def failed_records(self):
+        return [dict(d["record"]) for d in self.dead if "record" in d]
+
+
+class FakeQueue:
+    """In-memory job queue for API unit tests."""
+
+    def __init__(self, *, fail=False):
+        self.fail = fail
+        self.enqueued = []
+
+    async def put(self, item_ids):
+        if self.fail:
+            raise QueueUnavailableError("Redis unavailable")
+        self.enqueued.extend(item_ids)
+
+    async def close(self):
+        return None
+
+
 @pytest.fixture
 def fake_llm():
     return FakeLLM(
@@ -111,6 +205,7 @@ def settings():
     return Settings(
         app_env="ci",
         database_url="postgresql://localhost:5432/unused",
+        admin_token="test-admin-token",
         _env_file=None,
     )
 
@@ -121,11 +216,51 @@ def db_state():
 
 
 @pytest.fixture
-def client(settings, db_state, fake_gateway):
+def fake_ingest_repo():
+    return FakeIngestRepo()
+
+
+@pytest.fixture
+def fake_queue():
+    return FakeQueue()
+
+
+@pytest.fixture
+def fake_manifest():
+    return [
+        {
+            "url": "https://github.com/kubernetes/website/blob/HEAD/content/en/docs/a.md",
+            "source": "k8s-docs",
+            "licence": "CC BY 4.0",
+            "title": "A",
+            "via": "git",
+            "commit": "abc123",
+            "path": "data/raw/k8s-docs/a.md",
+            "sha256": "a" * 64,
+            "status": "downloaded",
+        },
+        {
+            "url": "https://kubernetes.io/docs/b/",
+            "source": "kubernetes-io",
+            "licence": "CC BY 4.0",
+            "title": "B",
+            "via": "http",
+            "path": "data/raw/kubernetes-io/b.html",
+            "sha256": "b" * 64,
+            "status": "downloaded",
+        },
+    ]
+
+
+@pytest.fixture
+def client(settings, db_state, fake_gateway, fake_ingest_repo, fake_queue, fake_manifest):
     app = create_app(settings)
     app.dependency_overrides[get_repo] = lambda: FakeRepo(SAMPLE)
     app.dependency_overrides[check_db] = lambda: db_state["up"]
     app.dependency_overrides[get_gateway] = lambda: fake_gateway
     app.dependency_overrides[get_usage_repo] = lambda: FakeUsageRepo()
+    app.dependency_overrides[get_ingest_repo] = lambda: fake_ingest_repo
+    app.dependency_overrides[get_queue] = lambda: fake_queue
+    app.dependency_overrides[get_manifest] = lambda: fake_manifest
     with TestClient(app) as c:
         yield c
